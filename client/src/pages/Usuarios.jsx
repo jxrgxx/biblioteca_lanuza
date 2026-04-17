@@ -15,6 +15,7 @@ const CURSOS = [
   "1º Bach",
   "2º Bach",
 ];
+
 const EMPTY = {
   nombre: "",
   apellidos: "",
