@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
@@ -7,27 +7,27 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         if (payload.exp * 1000 > Date.now()) setUser(payload);
-        else localStorage.removeItem('token');
+        else localStorage.removeItem("token");
       } catch {
-        localStorage.removeItem('token');
+        localStorage.removeItem("token");
       }
     }
     setLoading(false);
   }, []);
 
   const login = (token) => {
-    localStorage.setItem('token', token);
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    localStorage.setItem("token", token);
+    const payload = JSON.parse(atob(token.split(".")[1]));
     setUser(payload);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setUser(null);
   };
 
