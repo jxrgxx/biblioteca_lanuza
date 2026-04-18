@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 
 const ESTADOS = ["disponible", "prestado", "extraviado", "no disponible"];
+
 const CURSOS = [
   "1º Primaria",
   "2º Primaria",
@@ -16,6 +17,7 @@ const CURSOS = [
   "1º Bach",
   "2º Bach",
 ];
+
 const EMPTY = {
   codigo: "",
   titulo: "",

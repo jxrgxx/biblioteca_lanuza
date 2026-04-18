@@ -81,7 +81,7 @@ export default function Sidebar() {
         minWidth: sidebarWidth,
         transition: dragging.current ? "none" : "width 0.2s ease",
       }}
-      className="relative min-h-screen bg-brand-700 text-white flex flex-col flex-shrink-0"
+      className="relative h-full bg-brand-700 text-white flex flex-col flex-shrink-0"
     >
       {/* Header */}
       <div

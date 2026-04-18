@@ -1,21 +1,22 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import Footer from '../components/Footer';
 
 export default function MisPrestamos() {
   const [prestamos, setPrestamos] = useState([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    api.get("/prestamos/mis").then((r) => setPrestamos(r.data));
+    api.get('/prestamos/mis').then((r) => setPrestamos(r.data));
   }, []);
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate('/login');
   };
 
   const vencido = (p) =>
@@ -24,7 +25,7 @@ export default function MisPrestamos() {
     !p.devuelto;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-brand-700 text-white px-6 py-4 flex items-center justify-between">
         <div>
           <p className="text-xs text-brand-300">Biblioteca Juan de Lanuza</p>
@@ -56,7 +57,7 @@ export default function MisPrestamos() {
               {prestamos.map((p) => (
                 <tr
                   key={p.id}
-                  className={`hover:bg-gray-50 ${vencido(p) ? "bg-red-50" : ""}`}
+                  className={`hover:bg-gray-50 ${vencido(p) ? 'bg-red-50' : ''}`}
                 >
                   <td className="px-4 py-3 font-medium">{p.libro_titulo}</td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">
@@ -67,13 +68,13 @@ export default function MisPrestamos() {
                     {p.fecha_devolucion_prevista ? (
                       <span
                         className={
-                          vencido(p) ? "text-red-600 font-semibold" : ""
+                          vencido(p) ? 'text-red-600 font-semibold' : ''
                         }
                       >
                         {p.fecha_devolucion_prevista}
                       </span>
                     ) : (
-                      "—"
+                      '—'
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -107,6 +108,7 @@ export default function MisPrestamos() {
           </table>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import TopBar from "../components/TopBar";
 
 const CURSOS = [
   "1º Primaria",
@@ -56,8 +55,7 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 py-10">
-      <TopBar dark />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-10">
       <div className="bg-white rounded-2xl shadow p-8 w-full max-w-md">
         <h1 className="text-2xl font-bold text-brand-700 mb-6">Crear cuenta</h1>
 
