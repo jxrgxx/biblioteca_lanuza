@@ -45,7 +45,7 @@ export default function Register() {
       };
       const { data } = await api.post('/auth/register', payload);
       login(data.token);
-      navigate(form.rol === 'personal' ? '/dashboard' : '/mis-prestamos');
+      navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');
     } finally {

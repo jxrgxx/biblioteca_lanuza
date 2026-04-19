@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { esGestion } from '../components/PrivateRoute';
 import LibroCard from '../components/LibroCard';
 import Footer from '../components/Footer';
 
 const ESTADOS = ['disponible', 'prestado', 'extraviado', 'no disponible'];
+const LIMIT = 24;
 
 export default function Catalogo() {
+  const { user } = useAuth();
   const [libros, setLibros] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
   const [generos, setGeneros] = useState([]);
   const [idiomas, setIdiomas] = useState([]);
   const [editoriales, setEditoriales] = useState([]);
@@ -31,8 +38,7 @@ export default function Catalogo() {
     api.get('/libros/filtros/estanterias').then((r) => setEstanterias(r.data));
   }, []);
 
-  // Carga libros filtrados cada vez que cambia algún filtro
-  useEffect(() => {
+  const buildParams = (off) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (filtroEstado) params.set('estado', filtroEstado);
@@ -42,22 +48,32 @@ export default function Catalogo() {
     if (filtroEstanteria) params.set('estanteria', filtroEstanteria);
     params.set('sortBy', sortBy);
     params.set('order', order);
+    params.set('limit', LIMIT);
+    params.set('offset', off);
+    return params;
+  };
 
+  // Al cambiar filtros: resetea y carga desde el principio
+  useEffect(() => {
     setLoading(true);
-    api
-      .get(`/libros?${params}`)
-      .then((r) => setLibros(r.data))
-      .finally(() => setLoading(false));
-  }, [
-    search,
-    filtroEstado,
-    filtroGenero,
-    filtroIdioma,
-    filtroEditorial,
-    filtroEstanteria,
-    sortBy,
-    order,
-  ]);
+    setOffset(0);
+    api.get(`/libros?${buildParams(0)}`).then((r) => {
+      setLibros(r.data);
+      setHasMore(r.data.length === LIMIT);
+      setLoading(false);
+    });
+  }, [search, filtroEstado, filtroGenero, filtroIdioma, filtroEditorial, filtroEstanteria, sortBy, order]);
+
+  const cargarMas = () => {
+    const newOffset = offset + LIMIT;
+    setLoadingMore(true);
+    api.get(`/libros?${buildParams(newOffset)}`).then((r) => {
+      setLibros((prev) => [...prev, ...r.data]);
+      setHasMore(r.data.length === LIMIT);
+      setOffset(newOffset);
+      setLoadingMore(false);
+    });
+  };
 
   const resetFiltros = () => {
     setSearch('');
@@ -94,12 +110,29 @@ export default function Catalogo() {
               <p className="text-brand-300 text-xs">Juan de Lanuza</p>
             </div>
           </div>
-          <Link
-            to="/login"
-            className="bg-white text-brand-700 font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-50 transition-colors"
-          >
-            Acceder
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold leading-tight">
+                  {user.nombre} {user.apellidos}
+                </p>
+                <p className="text-brand-300 text-xs capitalize">{user.rol}</p>
+              </div>
+              <Link
+                to={esGestion(user.rol) ? '/dashboard' : '/mis-prestamos'}
+                className="bg-white text-brand-700 font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-50 transition-colors"
+              >
+                {esGestion(user.rol) ? 'Gestión' : 'Mis préstamos'}
+              </Link>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="bg-white text-brand-700 font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-50 transition-colors"
+            >
+              Acceder
+            </Link>
+          )}
         </div>
       </header>
 
@@ -250,12 +283,29 @@ export default function Catalogo() {
           <>
             <p className="text-xs text-gray-400 mb-5">
               {libros.length}{' '}
-              {libros.length === 1 ? 'libro encontrado' : 'libros encontrados'}
+              {libros.length === 1 ? 'libro cargado' : 'libros cargados'}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
               {libros.map((libro) => (
                 <LibroCard key={libro.id} libro={libro} />
               ))}
+            </div>
+
+            {/* CARGAR MÁS / FIN */}
+            <div className="flex justify-center mt-10 mb-4">
+              {hasMore ? (
+                <button
+                  onClick={cargarMas}
+                  disabled={loadingMore}
+                  className="bg-brand-600 hover:bg-brand-700 text-white font-semibold px-8 py-3 rounded-full text-sm transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? 'Cargando...' : 'Cargar más libros'}
+                </button>
+              ) : (
+                <p className="text-sm text-gray-400 italic">
+                  — Has llegado al final del catálogo —
+                </p>
+              )}
             </div>
           </>
         )}

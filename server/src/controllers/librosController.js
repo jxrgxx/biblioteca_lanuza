@@ -35,6 +35,12 @@ exports.getAll = async (req, res) => {
     const sortBy = validSort.includes(req.query.sortBy) ? req.query.sortBy : "titulo";
     const order = req.query.order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
     query += ` ORDER BY ${sortBy} ${order}`;
+    if (req.query.limit) {
+      const limit = Math.min(parseInt(req.query.limit), 100);
+      const offset = parseInt(req.query.offset) || 0;
+      query += ` LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+    }
     const [rows] = await db.query(query, params);
     res.json(rows);
   } catch (err) {

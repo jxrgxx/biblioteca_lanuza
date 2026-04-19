@@ -35,11 +35,11 @@ export default function App() {
 
       <Route
         path="/login"
-        element={!user ? <Login /> : <Navigate to="/dashboard" />}
+        element={!user ? <Login /> : <Navigate to="/" />}
       />
       <Route
         path="/register"
-        element={!user ? <Register /> : <Navigate to="/dashboard" />}
+        element={!user ? <Register /> : <Navigate to="/" />}
       />
 
       <Route
@@ -104,14 +104,7 @@ export default function App() {
       <Route
         path="*"
         element={
-          <Navigate
-            to={
-              user
-                ? user.rol === 'personal'
-                  ? '/dashboard'
-                  : '/mis-prestamos'
-                : '/'
-            }
+          <Navigate to="/"
           />
         }
       />
