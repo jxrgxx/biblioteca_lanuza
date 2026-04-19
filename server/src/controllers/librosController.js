@@ -23,9 +23,64 @@ exports.getAll = async (req, res) => {
       query += " AND (titulo LIKE ? OR autor LIKE ? OR codigo LIKE ?)";
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
-    query += " ORDER BY titulo";
+    if (req.query.editorial) {
+      query += " AND editorial = ?";
+      params.push(req.query.editorial);
+    }
+    if (req.query.estanteria) {
+      query += " AND estanteria = ?";
+      params.push(req.query.estanteria);
+    }
+    const validSort = ["titulo", "autor", "editorial"];
+    const sortBy = validSort.includes(req.query.sortBy) ? req.query.sortBy : "titulo";
+    const order = req.query.order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+    query += ` ORDER BY ${sortBy} ${order}`;
     const [rows] = await db.query(query, params);
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getEditoriales = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT DISTINCT editorial FROM libro WHERE editorial IS NOT NULL ORDER BY editorial"
+    );
+    res.json(rows.map((r) => r.editorial));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getEstanterias = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT DISTINCT estanteria FROM libro WHERE estanteria IS NOT NULL ORDER BY estanteria"
+    );
+    res.json(rows.map((r) => r.estanteria));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getGeneros = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT DISTINCT genero FROM libro WHERE genero IS NOT NULL ORDER BY genero"
+    );
+    res.json(rows.map((r) => r.genero));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getIdiomas = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT DISTINCT idioma FROM libro WHERE idioma IS NOT NULL ORDER BY idioma"
+    );
+    res.json(rows.map((r) => r.idioma));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

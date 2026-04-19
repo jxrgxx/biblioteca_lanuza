@@ -11,6 +11,7 @@ import Prestamos from './pages/Prestamos';
 import Usuarios from './pages/Usuarios';
 import Registro from './pages/Registro';
 import MisPrestamos from './pages/MisPrestamos';
+import Catalogo from './pages/Catalogo';
 
 function Layout({ children }) {
   return (
@@ -30,6 +31,8 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<Catalogo />} />
+
       <Route
         path="/login"
         element={!user ? <Login /> : <Navigate to="/dashboard" />}
@@ -107,7 +110,7 @@ export default function App() {
                 ? user.rol === 'personal'
                   ? '/dashboard'
                   : '/mis-prestamos'
-                : '/login'
+                : '/'
             }
           />
         }
