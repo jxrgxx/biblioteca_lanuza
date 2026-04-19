@@ -125,7 +125,7 @@ export default function Catalogo() {
             </button>
           )}
 
-          {/* Filtro estado */}
+          {/* Filtro Estado */}
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
