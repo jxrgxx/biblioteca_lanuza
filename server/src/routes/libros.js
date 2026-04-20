@@ -7,12 +7,17 @@ const ctrl = require("../controllers/librosController");
 
 const storage = multer.diskStorage({
   destination: path.join(__dirname, "../../uploads"),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const base = (req.query.nombre || String(Date.now())).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    cb(null, `${base}${ext}`);
+  },
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.get("/", ctrl.getAll);
 router.get("/filtros/generos", ctrl.getGeneros);
+router.get("/next-codigo", ctrl.getNextCodigo);
 router.get("/filtros/idiomas", ctrl.getIdiomas);
 router.get("/filtros/editoriales", ctrl.getEditoriales);
 router.get("/filtros/estanterias", ctrl.getEstanterias);

@@ -36,6 +36,22 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.update = async (req, res) => {
+  try {
+    const { nombre, curso, fecha } = req.body;
+    if (!nombre || !curso || !fecha)
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
+    await db.query("UPDATE registro SET nombre=?, curso=?, fecha=? WHERE id=?", [
+      nombre, curso, fecha, req.params.id,
+    ]);
+    const [rows] = await db.query("SELECT * FROM registro WHERE id = ?", [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: "Registro no encontrado" });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.remove = async (req, res) => {
   try {
     await db.query("DELETE FROM registro WHERE id = ?", [req.params.id]);

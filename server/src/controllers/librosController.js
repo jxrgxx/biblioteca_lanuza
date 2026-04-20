@@ -92,6 +92,20 @@ exports.getIdiomas = async (req, res) => {
   }
 };
 
+exports.getNextCodigo = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT codigo FROM libro WHERE codigo REGEXP '^COL-[0-9]+$' ORDER BY CAST(SUBSTRING(codigo, 5) AS UNSIGNED) DESC LIMIT 1"
+    );
+    if (!rows.length) return res.json({ codigo: 'COL-0001' });
+    const num = parseInt(rows[0].codigo.split('-')[1], 10);
+    const next = String(num + 1).padStart(4, '0');
+    res.json({ codigo: `COL-${next}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getOne = async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM libro WHERE id = ?", [

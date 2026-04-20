@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../services/api";
 
 const CURSOS = [
@@ -37,6 +38,7 @@ export default function Usuarios() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
 
   const load = async () => {
     const { data } = await api.get("/usuarios");
@@ -50,12 +52,14 @@ export default function Usuarios() {
     setEditing(null);
     setForm(EMPTY);
     setError("");
+    setShowPass(false);
     setModal(true);
   };
   const openEdit = (u) => {
     setEditing(u);
     setForm({ ...u, password: "" });
     setError("");
+    setShowPass(false);
     setModal(true);
   };
 
@@ -198,13 +202,22 @@ export default function Usuarios() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Contraseña {editing && "(dejar vacío para no cambiar)"}
                 </label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => set("password", e.target.value)}
-                  required={!editing}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) => set("password", e.target.value)}
+                    required={!editing}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

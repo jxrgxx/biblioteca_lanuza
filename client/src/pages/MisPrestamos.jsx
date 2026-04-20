@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Footer from '../components/Footer';
+import { fmt } from '../utils/dates';
 
 export default function MisPrestamos() {
   const [prestamos, setPrestamos] = useState([]);
@@ -63,19 +64,13 @@ export default function MisPrestamos() {
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">
                     {p.libro_codigo}
                   </td>
-                  <td className="px-4 py-3">{p.fecha_inicio}</td>
+                  <td className="px-4 py-3">{fmt(p.fecha_inicio)}</td>
                   <td className="px-4 py-3">
                     {p.fecha_devolucion_prevista ? (
-                      <span
-                        className={
-                          vencido(p) ? 'text-red-600 font-semibold' : ''
-                        }
-                      >
-                        {p.fecha_devolucion_prevista}
+                      <span className={vencido(p) ? 'text-red-600 font-semibold' : ''}>
+                        {fmt(p.fecha_devolucion_prevista)}
                       </span>
-                    ) : (
-                      '—'
-                    )}
+                    ) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     {p.devuelto ? (

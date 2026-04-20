@@ -5,6 +5,7 @@ const ctrl = require("../controllers/registroController");
 
 router.get("/", auth, isPersonal, ctrl.getAll);
 router.post("/", auth, isPersonal, ctrl.create);
+router.put("/:id", auth, isPersonal, ctrl.update);
 router.delete("/:id", auth, isPersonal, ctrl.remove);
 
 module.exports = router;
