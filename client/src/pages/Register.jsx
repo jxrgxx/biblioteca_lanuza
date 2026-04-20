@@ -45,7 +45,7 @@ export default function Register() {
       };
       const { data } = await api.post('/auth/register', payload);
       login(data.token);
-      navigate(form.rol === 'personal' ? '/dashboard' : '/mis-prestamos');
+      navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrarse');
     } finally {
@@ -84,7 +84,9 @@ export default function Register() {
             <p className="text-gray-400 text-sm">Juan de Lanuza</p>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">Crear cuenta</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">
+            Crear cuenta
+          </h2>
           <p className="text-gray-400 text-sm mb-6">
             Rellena tus datos para registrarte
           </p>
@@ -174,7 +176,9 @@ export default function Register() {
                 >
                   <option value="">— Selecciona —</option>
                   {CURSOS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
