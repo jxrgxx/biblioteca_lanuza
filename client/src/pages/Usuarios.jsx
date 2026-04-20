@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import api from "../services/api";
 
@@ -39,6 +39,17 @@ export default function Usuarios() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [filtroRol, setFiltroRol] = useState("");
+  const [filtroUbicacion, setFiltroUbicacion] = useState("");
+  const [sortCol, setSortCol] = useState("apellidos");
+  const [sortDir, setSortDir] = useState("asc");
+  const [page, setPage] = useState(1);
+  const debounceRef = useRef(null);
+
+  const PAGE_SIZE = 50;
 
   const load = async () => {
     const { data } = await api.get("/usuarios");
@@ -88,6 +99,59 @@ export default function Usuarios() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  const handleSearchInput = (val) => {
+    setSearchInput(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { setSearch(val); setPage(1); }, 300);
+  };
+
+  const filtered = usuarios.filter((u) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !u.nombre?.toLowerCase().includes(q) &&
+        !u.apellidos?.toLowerCase().includes(q) &&
+        !u.email?.toLowerCase().includes(q)
+      ) return false;
+    }
+    if (filtroRol && u.rol !== filtroRol) return false;
+    if (filtroUbicacion && u.ubicacion !== filtroUbicacion) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortCol] ?? "";
+    const vb = b[sortCol] ?? "";
+    const cmp = String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const toggleSort = (col) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+    setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const Th = ({ col, children }) => (
+    <th
+      onClick={() => toggleSort(col)}
+      className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
+    >
+      {children}
+      <span className={`ml-1 ${sortCol === col ? "text-brand-600" : "text-gray-300"}`}>
+        {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+      </span>
+    </th>
+  );
+
+  const hayFiltros = searchInput || filtroRol || filtroUbicacion;
+  const limpiarFiltros = () => {
+    setSearchInput(""); setSearch(""); setFiltroRol(""); setFiltroUbicacion(""); setPage(1);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -100,19 +164,71 @@ export default function Usuarios() {
         </button>
       </div>
 
+      {/* Buscador */}
+      <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
+        <div className="flex gap-3 items-center">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <input
+              placeholder="Buscar por nombre, apellidos o email..."
+              value={searchInput}
+              onChange={(e) => handleSearchInput(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {searchInput && (
+              <button
+                onClick={() => handleSearchInput("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >×</button>
+            )}
+          </div>
+          {hayFiltros && (
+            <button onClick={limpiarFiltros} className="text-sm text-brand-600 hover:underline whitespace-nowrap">
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={filtroRol}
+            onChange={(e) => setFiltroRol(e.target.value)}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroRol ? "border-brand-400 bg-brand-50 text-brand-700" : "border-gray-300"}`}
+          >
+            <option value="">Rol</option>
+            <option value="alumno">Alumno</option>
+            <option value="profesorado">Profesorado</option>
+            <option value="personal">Personal</option>
+            <option value="admin">Admin</option>
+            <option value="biblioteca">Biblioteca</option>
+          </select>
+          <select
+            value={filtroUbicacion}
+            onChange={(e) => setFiltroUbicacion(e.target.value)}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroUbicacion ? "border-brand-400 bg-brand-50 text-brand-700" : "border-gray-300"}`}
+          >
+            <option value="">Curso / Ubicación</option>
+            {CURSOS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <p className="text-xs text-gray-400">
+          {filtered.length} {filtered.length === 1 ? "usuario encontrado" : "usuarios encontrados"}
+          {hayFiltros && " con los filtros aplicados"}
+        </p>
+      </div>
+
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
-              <th className="px-4 py-3 text-left">Nombre</th>
-              <th className="px-4 py-3 text-left">Email</th>
-              <th className="px-4 py-3 text-left">Rol</th>
-              <th className="px-4 py-3 text-left">Ubicación</th>
+              <Th col="apellidos">Nombre</Th>
+              <Th col="email">Email</Th>
+              <Th col="rol">Rol</Th>
+              <Th col="ubicacion">Ubicación</Th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {usuarios.map((u) => (
+            {pagina.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium">
                   {u.apellidos}, {u.nombre}
@@ -144,16 +260,34 @@ export default function Usuarios() {
                 </td>
               </tr>
             ))}
-            {!usuarios.length && (
+            {!sorted.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
-                  Sin usuarios
+                  {hayFiltros ? "Sin resultados con los filtros aplicados" : "Sin usuarios"}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+          <span>{sorted.length} usuarios — página {page} de {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >← Anterior</button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >Siguiente →</button>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

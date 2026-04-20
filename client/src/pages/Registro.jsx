@@ -23,6 +23,8 @@ export default function Registro() {
   const [filtroCurso, setFiltroCurso] = useState("");
   const debounceRef = useRef(null);
   const [page, setPage] = useState(1);
+  const [sortCol, setSortCol] = useState("id");
+  const [sortDir, setSortDir] = useState("desc");
 
   // Edición inline
   const [editId, setEditId] = useState(null);
@@ -75,14 +77,39 @@ export default function Registro() {
     debounceRef.current = setTimeout(() => { setSearch(val); setPage(1); }, 300);
   };
 
+  const toggleSort = (col) => {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+    setPage(1);
+  };
+
+  const Th = ({ col, children }) => (
+    <th
+      onClick={() => toggleSort(col)}
+      className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
+    >
+      {children}
+      <span className={`ml-1 ${sortCol === col ? "text-brand-600" : "text-gray-300"}`}>
+        {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+      </span>
+    </th>
+  );
+
   const filtered = entradas.filter((e) => {
     if (search && !e.nombre.toLowerCase().includes(search.toLowerCase())) return false;
     if (filtroCurso && e.curso !== filtroCurso) return false;
     return true;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagina = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortCol] ?? "";
+    const vb = b[sortCol] ?? "";
+    const cmp = String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const hayFiltros = searchInput || filtroCurso;
 
@@ -92,7 +119,7 @@ export default function Registro() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulario nuevo */}
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-white rounded-xl shadow p-6 self-start">
           <h2 className="font-semibold text-gray-700 mb-4">Añadir entrada</h2>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
@@ -181,8 +208,8 @@ export default function Registro() {
               <thead className="bg-gray-50 text-gray-500 uppercase text-xs sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">Nombre</th>
-                  <th className="px-4 py-3 text-left">Curso</th>
+                  <Th col="nombre">Nombre</Th>
+                  <Th col="curso">Curso</Th>
                   <th className="px-4 py-3 text-left">Acciones</th>
                 </tr>
               </thead>
@@ -251,7 +278,7 @@ export default function Registro() {
           {/* Paginación */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-3 border-t text-sm text-gray-500">
-              <span>{filtered.length} entradas — página {page} de {totalPages}</span>
+              <span>{sorted.length} entradas — página {page} de {totalPages}</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}

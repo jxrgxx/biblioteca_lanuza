@@ -9,6 +9,6 @@ export default function PrivateRoute({ children, onlyPersonal = false }) {
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (onlyPersonal && !esGestion(user.rol))
-    return <Navigate to="/mis-prestamos" replace />;
+    return <Navigate to="/mi-espacio" replace />;
   return children;
 }
