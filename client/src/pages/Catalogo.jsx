@@ -7,7 +7,7 @@ import LibroCard from '../components/LibroCard';
 import Footer from '../components/Footer';
 
 const ESTADOS = ['disponible', 'prestado', 'extraviado', 'no disponible'];
-const LIMIT = 24;
+const LIMIT = 56;
 
 export default function Catalogo() {
   const { user } = useAuth();
@@ -62,7 +62,16 @@ export default function Catalogo() {
       setHasMore(r.data.length === LIMIT);
       setLoading(false);
     });
-  }, [search, filtroEstado, filtroGenero, filtroIdioma, filtroEditorial, filtroEstanteria, sortBy, order]);
+  }, [
+    search,
+    filtroEstado,
+    filtroGenero,
+    filtroIdioma,
+    filtroEditorial,
+    filtroEstanteria,
+    sortBy,
+    order,
+  ]);
 
   const cargarMas = () => {
     const newOffset = offset + LIMIT;
