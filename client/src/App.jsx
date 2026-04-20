@@ -10,7 +10,7 @@ import Libros from './pages/Libros';
 import Prestamos from './pages/Prestamos';
 import Usuarios from './pages/Usuarios';
 import Registro from './pages/Registro';
-import MisPrestamos from './pages/MisPrestamos';
+import MiEspacio from './pages/MiEspacio';
 import Catalogo from './pages/Catalogo';
 
 function Layout({ children }) {
@@ -94,9 +94,13 @@ export default function App() {
       />
       <Route
         path="/mis-prestamos"
+        element={<Navigate to="/mi-espacio" replace />}
+      />
+      <Route
+        path="/mi-espacio"
         element={
           <PrivateRoute>
-            <MisPrestamos />
+            <MiEspacio />
           </PrivateRoute>
         }
       />
