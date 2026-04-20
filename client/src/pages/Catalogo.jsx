@@ -106,7 +106,7 @@ export default function Catalogo() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* CABECERA */}
-      <header className="bg-brand-700 text-white shadow-md">
+      <header className="bg-brand-600 text-white shadow-md">
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -115,7 +115,7 @@ export default function Catalogo() {
               className="h-10 object-contain"
             />
             <div>
-              <p className="font-bold text-lg leading-tight">Biblioteca</p>
+              <p className="font-medium text-lg leading-tight">Biblioteca</p>
               <p className="text-brand-300 text-xs">Juan de Lanuza</p>
             </div>
           </div>

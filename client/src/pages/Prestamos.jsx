@@ -2,9 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import { fmt } from '../utils/dates';
 
+const USR_RE = /^USR-(\d{1,4})$/i;
+const COL_RE = /^COL-(\d{1,4})$/i;
+
 const EMPTY_FORM = {
-  id_usuario: '',
-  id_libro: '',
+  qrUsuario: '',
+  qrLibro: '',
   fecha_inicio: '',
   fecha_devolucion_prevista: '',
 };
@@ -35,10 +38,14 @@ export default function Prestamos() {
 
   // Modal nuevo préstamo
   const [modal, setModal] = useState(false);
-  const [usuarios, setUsuarios] = useState([]);
-  const [libros, setLibros] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
+  const [usuarioPreview, setUsuarioPreview] = useState(null);
+  const [libroPreview, setLibroPreview] = useState(null);
+  const [usuarioError, setUsuarioError] = useState('');
+  const [libroError, setLibroError] = useState('');
+  const usrDebounce = useRef(null);
+  const colDebounce = useRef(null);
 
   // Modal editar
   const [editModal, setEditModal] = useState(false);
@@ -131,15 +138,62 @@ export default function Prestamos() {
     setPage(1);
   };
 
+  const resolveUsuario = (val) => {
+    setUsuarioPreview(null);
+    setUsuarioError('');
+    clearTimeout(usrDebounce.current);
+    const match = val.match(USR_RE);
+    if (!match) {
+      if (val) setUsuarioError('Formato inválido. Usa USR-0000');
+      return;
+    }
+    const id = parseInt(match[1], 10);
+    usrDebounce.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/usuarios/${id}`);
+        setUsuarioPreview(data);
+        setUsuarioError('');
+      } catch {
+        setUsuarioError('Usuario no encontrado');
+      }
+    }, 250);
+  };
+
+  const resolveLibro = (val) => {
+    setLibroPreview(null);
+    setLibroError('');
+    clearTimeout(colDebounce.current);
+    const match = val.match(COL_RE);
+    if (!match) {
+      if (val) setLibroError('Formato inválido. Usa COL-0000');
+      return;
+    }
+    const codigo = `COL-${match[1].padStart(4, '0')}`;
+    colDebounce.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/libros?search=${codigo}`);
+        const libro = data.find(
+          (l) => l.codigo.toUpperCase() === codigo.toUpperCase()
+        );
+        if (!libro) {
+          setLibroError('Libro no encontrado');
+        } else {
+          setLibroPreview(libro);
+          setLibroError('');
+        }
+      } catch {
+        setLibroError('Error al buscar libro');
+      }
+    }, 250);
+  };
+
   // Modal nuevo
-  const openModal = async () => {
-    const [u, l] = await Promise.all([
-      api.get('/usuarios'),
-      api.get('/libros?estado=disponible'),
-    ]);
-    setUsuarios(u.data);
-    setLibros(l.data);
+  const openModal = () => {
     setForm({ ...EMPTY_FORM, fecha_inicio: today });
+    setUsuarioPreview(null);
+    setLibroPreview(null);
+    setUsuarioError('');
+    setLibroError('');
     setError('');
     setModal(true);
   };
@@ -147,8 +201,17 @@ export default function Prestamos() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!usuarioPreview) return setError('Introduce un código de usuario válido (USR-0000)');
+    if (!libroPreview) return setError('Introduce un código de libro válido (COL-0000)');
+    if (libroPreview.estado !== 'disponible')
+      return setError(`El libro no está disponible (estado: ${libroPreview.estado})`);
     try {
-      await api.post('/prestamos', form);
+      await api.post('/prestamos', {
+        id_usuario: usuarioPreview.id,
+        id_libro: libroPreview.id,
+        fecha_inicio: form.fecha_inicio,
+        fecha_devolucion_prevista: form.fecha_devolucion_prevista,
+      });
       setModal(false);
       load();
     } catch (err) {
@@ -218,7 +281,7 @@ export default function Prestamos() {
       {/* Tabs devuelto */}
       <div className="flex gap-2 mb-4">
         {[
-          ['0', 'Activos'],
+          ['0', 'No Devueltos'],
           ['1', 'Devueltos'],
           ['', 'Todos'],
         ].map(([v, l]) => (
@@ -274,8 +337,8 @@ export default function Prestamos() {
             className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroVencido ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
           >
             <option value="">Filtro de vencimiento</option>
-            <option value="si">Vencido</option>
-            <option value="no">No vencido</option>
+            <option value="si">Fuera de plazo</option>
+            <option value="no">Dentro de plazo</option>
           </select>
         </div>
 
@@ -314,10 +377,14 @@ export default function Prestamos() {
                 <td className="px-4 py-3">{fmt(p.fecha_inicio)}</td>
                 <td className="px-4 py-3">
                   {p.fecha_devolucion_prevista ? (
-                    <span className={vencido(p) ? 'text-red-600 font-semibold' : ''}>
+                    <span
+                      className={vencido(p) ? 'text-red-600 font-semibold' : ''}
+                    >
                       {fmt(p.fecha_devolucion_prevista)}
                     </span>
-                  ) : '—'}
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td className="px-4 py-3">{fmt(p.fecha_devolucion_real)}</td>
                 <td className="px-4 py-3">
@@ -397,41 +464,56 @@ export default function Prestamos() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold mb-4">Nuevo préstamo</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Usuario QR */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Usuario *
+                  Código QR usuario <span className="text-gray-400">(USR-0000)</span>
                 </label>
-                <select
-                  required
-                  value={form.id_usuario}
-                  onChange={(e) => set('id_usuario', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="">— Selecciona —</option>
-                  {usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.apellidos}, {u.nombre} ({u.rol})
-                    </option>
-                  ))}
-                </select>
+                <input
+                  placeholder="USR-0017"
+                  value={form.qrUsuario}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    set('qrUsuario', v);
+                    resolveUsuario(v);
+                  }}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${usuarioError ? 'border-red-400' : usuarioPreview ? 'border-green-400' : 'border-gray-300'}`}
+                />
+                {usuarioError && <p className="text-red-500 text-xs mt-1">{usuarioError}</p>}
+                {usuarioPreview && (
+                  <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                    <span className="text-green-600">✓</span>
+                    <span className="font-medium">{usuarioPreview.nombre} {usuarioPreview.apellidos}</span>
+                    <span className="text-gray-400 text-xs ml-auto">{usuarioPreview.rol}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Libro QR */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Libro (disponibles) *
+                  Código QR libro <span className="text-gray-400">(COL-0000)</span>
                 </label>
-                <select
-                  required
-                  value={form.id_libro}
-                  onChange={(e) => set('id_libro', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="">— Selecciona —</option>
-                  {libros.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.titulo} [{l.codigo}]
-                    </option>
-                  ))}
-                </select>
+                <input
+                  placeholder="COL-0042"
+                  value={form.qrLibro}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    set('qrLibro', v);
+                    resolveLibro(v);
+                  }}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${libroError ? 'border-red-400' : libroPreview ? 'border-green-400' : 'border-gray-300'}`}
+                />
+                {libroError && <p className="text-red-500 text-xs mt-1">{libroError}</p>}
+                {libroPreview && (
+                  <div className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${libroPreview.estado === 'disponible' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-300'}`}>
+                    <span className={libroPreview.estado === 'disponible' ? 'text-green-600' : 'text-yellow-600'}>
+                      {libroPreview.estado === 'disponible' ? '✓' : '⚠'}
+                    </span>
+                    <span className="font-medium truncate">{libroPreview.titulo}</span>
+                    <span className="text-gray-400 text-xs ml-auto shrink-0">{libroPreview.estado}</span>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

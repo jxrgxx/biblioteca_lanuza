@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const estadoStyles = {
   disponible: 'bg-green-100 text-green-700 border-green-200',
   prestado: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -11,7 +13,7 @@ export default function LibroCard({ libro }) {
     : '/portada-default.png';
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full">
+    <Link to={`/libros/${libro.id}`} className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer">
       {/* Portada */}
       <div className="relative aspect-[3/4] bg-slate-100 overflow-hidden">
         <img
@@ -54,6 +56,6 @@ export default function LibroCard({ libro }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

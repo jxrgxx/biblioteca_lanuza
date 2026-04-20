@@ -52,6 +52,26 @@ exports.register = async (req, res) => {
   }
 };
 
+exports.cambiarPassword = async (req, res) => {
+  try {
+    const { passwordActual, passwordNueva } = req.body;
+    if (!passwordActual || !passwordNueva)
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+
+    const [rows] = await db.query('SELECT * FROM usuario WHERE id = ?', [req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const valid = await bcrypt.compare(passwordActual, rows[0].password);
+    if (!valid) return res.status(401).json({ error: 'La contraseña actual no es correcta' });
+
+    const hash = await bcrypt.hash(passwordNueva, 10);
+    await db.query('UPDATE usuario SET password = ? WHERE id = ?', [hash, req.user.id]);
+    res.json({ message: 'Contraseña actualizada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;

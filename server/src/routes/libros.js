@@ -9,8 +9,8 @@ const storage = multer.diskStorage({
   destination: path.join(__dirname, "../../uploads"),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const base = (req.query.nombre || String(Date.now())).replace(/[^a-zA-Z0-9_\-]/g, '_');
-    cb(null, `${base}${ext}`);
+    const raw = (req.query.nombre || 'foto').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    cb(null, `${raw}_${Date.now()}${ext}`);
   },
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });

@@ -521,29 +521,48 @@ export default function Libros() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Nombre archivo foto
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Nombre archivo foto
+                </label>
+                <input
+                  placeholder="ej: don-quijote  (se añade timestamp automáticamente)"
+                  value={form.nombre_foto}
+                  onChange={(e) => set('nombre_foto', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Foto de portada{editing && editing.nombre_foto ? ' (cambiar)' : ''}
+                </label>
+                <div className="flex gap-2">
+                  <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
+                    📁 Seleccionar archivo
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setFotoFile(e.target.files[0])} />
                   </label>
-                  <input
-                    placeholder="ej: don-quijote"
-                    value={form.nombre_foto}
-                    onChange={(e) => set('nombre_foto', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Foto de portada
+                  <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
+                    📷 Tomar foto
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setFotoFile(e.target.files[0])} />
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setFotoFile(e.target.files[0])}
-                    className="w-full text-sm text-gray-500 pt-1.5"
-                  />
                 </div>
+                {/* Preview */}
+                {(fotoFile || (editing?.nombre_foto)) && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <img
+                      src={fotoFile ? URL.createObjectURL(fotoFile) : `/uploads/${editing.nombre_foto}`}
+                      alt="preview"
+                      className="h-16 w-12 object-cover rounded-lg border border-gray-200"
+                    />
+                    <div className="text-xs text-gray-500">
+                      {fotoFile ? (
+                        <><p className="font-medium text-gray-700">{fotoFile.name}</p><p>{(fotoFile.size / 1024).toFixed(0)} KB</p></>
+                      ) : (
+                        <p className="text-gray-400">Foto actual — selecciona una nueva para reemplazarla</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="flex justify-end gap-3 pt-2">

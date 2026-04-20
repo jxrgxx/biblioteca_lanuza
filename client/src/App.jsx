@@ -12,6 +12,7 @@ import Usuarios from './pages/Usuarios';
 import Registro from './pages/Registro';
 import MiEspacio from './pages/MiEspacio';
 import Catalogo from './pages/Catalogo';
+import LibroDetalle from './pages/LibroDetalle';
 
 function Layout({ children }) {
   return (
@@ -32,6 +33,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Catalogo />} />
+      <Route path="/libros/:id" element={<LibroDetalle />} />
 
       <Route
         path="/login"
