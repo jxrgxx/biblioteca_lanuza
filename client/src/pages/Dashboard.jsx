@@ -32,7 +32,7 @@ export default function Dashboard() {
       ]);
       const ls = libros.data;
       setStats({
-        total: ls.length,
+        no_dispo: ls.filter((l) => l.estado === 'no disponible').length,
         disponibles: ls.filter((l) => l.estado === 'disponible').length,
         prestados: ls.filter((l) => l.estado === 'prestado').length,
         extraviados: ls.filter((l) => l.estado === 'extraviado').length,
@@ -40,8 +40,14 @@ export default function Dashboard() {
         registroHoy: registro.data.length,
       });
       const estaSemana = activos.data
-        .filter((p) => p.fecha_devolucion_prevista >= today && p.fecha_devolucion_prevista <= finDeSemana)
-        .sort((a, b) => a.fecha_devolucion_prevista.localeCompare(b.fecha_devolucion_prevista));
+        .filter(
+          (p) =>
+            p.fecha_devolucion_prevista >= today &&
+            p.fecha_devolucion_prevista <= finDeSemana
+        )
+        .sort((a, b) =>
+          a.fecha_devolucion_prevista.localeCompare(b.fecha_devolucion_prevista)
+        );
       setPrestamos(estaSemana);
     };
     fetchData();
@@ -53,14 +59,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <StatCard
-          label="Libros Totales"
-          value={stats?.total}
-          color="border-brand-500"
-        />
-        <StatCard
           label="Libros Disponibles"
           value={stats?.disponibles}
-          color="border-green-500"
+          color="border-brand-500"
         />
         <StatCard
           label="Libros Prestados"
@@ -71,6 +72,11 @@ export default function Dashboard() {
           label="Libros Extraviados"
           value={stats?.extraviados}
           color="border-red-500"
+        />
+        <StatCard
+          label="Libros no dispo"
+          value={stats?.no_dispo}
+          color="border-grey-900"
         />
         <StatCard
           label="Préstamos activos"
@@ -86,7 +92,9 @@ export default function Dashboard() {
 
       <div className="bg-white rounded-xl shadow">
         <div className="px-6 py-4 border-b">
-          <h2 className="font-semibold text-gray-700">Devoluciones esta semana</h2>
+          <h2 className="font-semibold text-gray-700">
+            Devoluciones esta semana
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -108,7 +116,9 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-3">{p.libro_titulo}</td>
                   <td className="px-6 py-3">{fmt(p.fecha_inicio)}</td>
-                  <td className="px-6 py-3">{fmt(p.fecha_devolucion_prevista)}</td>
+                  <td className="px-6 py-3">
+                    {fmt(p.fecha_devolucion_prevista)}
+                  </td>
                   <td className="px-6 py-3">{fmt(p.fecha_devolucion_real)}</td>
                   <td className="px-6 py-3">
                     {p.devuelto ? (
