@@ -12,7 +12,7 @@ exports.getAll = async (req, res) => {
       JOIN libro   l ON p.id_libro   = l.id
       WHERE 1=1`;
     const params = [];
-    if (devuelto !== undefined) {
+    if (devuelto !== undefined && devuelto !== '') {
       query += " AND p.devuelto = ?";
       params.push(devuelto);
     }
@@ -115,6 +115,58 @@ exports.devolver = async (req, res) => {
     ]);
     await conn.commit();
     res.json({ message: "Devolución registrada" });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+exports.update = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const { fecha_inicio, fecha_devolucion_prevista, fecha_devolucion_real, devuelto } = req.body;
+    const [rows] = await conn.query("SELECT * FROM prestamo WHERE id = ?", [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: "Préstamo no encontrado" });
+    const prev = rows[0];
+
+    await conn.query(
+      "UPDATE prestamo SET fecha_inicio=?, fecha_devolucion_prevista=?, fecha_devolucion_real=?, devuelto=? WHERE id=?",
+      [fecha_inicio, fecha_devolucion_prevista || null, fecha_devolucion_real || null, devuelto ? 1 : 0, req.params.id]
+    );
+
+    // sync libro.estado when devuelto changes
+    if (!!devuelto !== !!prev.devuelto) {
+      const nuevoEstado = devuelto ? "disponible" : "prestado";
+      await conn.query("UPDATE libro SET estado=? WHERE id=?", [nuevoEstado, prev.id_libro]);
+    }
+
+    await conn.commit();
+    res.json({ message: "Préstamo actualizado" });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+exports.remove = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query("SELECT * FROM prestamo WHERE id = ?", [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: "Préstamo no encontrado" });
+    const p = rows[0];
+
+    await conn.query("DELETE FROM prestamo WHERE id = ?", [req.params.id]);
+    if (!p.devuelto) {
+      await conn.query("UPDATE libro SET estado='disponible' WHERE id=?", [p.id_libro]);
+    }
+    await conn.commit();
+    res.json({ message: "Préstamo eliminado" });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: err.message });
