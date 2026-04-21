@@ -76,13 +76,18 @@ export default function MiEspacio() {
 
   const toggleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortCol(col); setSortDir('asc'); }
+    else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
   };
 
   const sortedPrestamos = [...prestamos].sort((a, b) => {
     const va = a[sortCol] ?? '';
     const vb = b[sortCol] ?? '';
-    const cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+    const cmp = String(va).localeCompare(String(vb), 'es', {
+      sensitivity: 'base',
+    });
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -92,7 +97,9 @@ export default function MiEspacio() {
       className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
     >
       {children}
-      <span className={`ml-1 ${sortCol === col ? 'text-brand-600' : 'text-gray-300'}`}>
+      <span
+        className={`ml-1 ${sortCol === col ? 'text-brand-600' : 'text-gray-300'}`}
+      >
         {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
       </span>
     </th>
@@ -124,7 +131,7 @@ export default function MiEspacio() {
               display: flex; align-items: center; justify-content: center;
             }
             .franja span {
-              color: white; font-size: 7px; font-weight: bold;
+              color: #7F252E; background: #7F252E; font-size: 7px; font-weight: bold;
               text-transform: uppercase; letter-spacing: 1px;
               writing-mode: vertical-rl; transform: rotate(180deg);
             }

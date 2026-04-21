@@ -134,7 +134,7 @@ export default function LibroDetalle() {
     <div className="bg-slate-50 min-h-screen flex flex-col">
       {/* NAVBAR */}
       <nav className="bg-brand-600 border-b border-slate-200 px-8 py-4 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <img
               src="/arbol_logo_transparente.png"
