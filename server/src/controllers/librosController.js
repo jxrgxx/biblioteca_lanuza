@@ -92,19 +92,6 @@ exports.getIdiomas = async (req, res) => {
   }
 };
 
-exports.getNextCodigo = async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      "SELECT codigo FROM libro WHERE codigo REGEXP '^COL-[0-9]+$' ORDER BY CAST(SUBSTRING(codigo, 5) AS UNSIGNED) DESC LIMIT 1"
-    );
-    if (!rows.length) return res.json({ codigo: 'COL-0001' });
-    const num = parseInt(rows[0].codigo.split('-')[1], 10);
-    const next = String(num + 1).padStart(4, '0');
-    res.json({ codigo: `COL-${next}` });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
 
 exports.getOne = async (req, res) => {
   try {
@@ -121,25 +108,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const {
-      codigo,
-      titulo,
-      autor,
-      editorial,
-      volumen,
-      idioma,
-      genero,
-      estanteria,
-      estado,
-    } = req.body;
-    if (!codigo || !titulo)
-      return res
-        .status(400)
-        .json({ error: "codigo y titulo son obligatorios" });
+    const { titulo, autor, editorial, volumen, idioma, genero, estanteria, estado } = req.body;
+    if (!titulo)
+      return res.status(400).json({ error: "El título es obligatorio" });
     const [result] = await db.query(
-      "INSERT INTO libro (codigo, titulo, autor, editorial, volumen, idioma, genero, estanteria, estado) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO libro (titulo, autor, editorial, volumen, idioma, genero, estanteria, estado) VALUES (?,?,?,?,?,?,?,?)",
       [
-        codigo,
         titulo,
         autor || null,
         editorial || null,
@@ -150,34 +124,24 @@ exports.create = async (req, res) => {
         estado || "disponible",
       ],
     );
-    const [rows] = await db.query("SELECT * FROM libro WHERE id = ?", [
-      result.insertId,
-    ]);
+    const newId = result.insertId;
+    await db.query(
+      "UPDATE libro SET codigo = CONCAT('COL-', LPAD(?, 4, '0')) WHERE id = ?",
+      [newId, newId]
+    );
+    const [rows] = await db.query("SELECT * FROM libro WHERE id = ?", [newId]);
     res.status(201).json(rows[0]);
   } catch (err) {
-    if (err.code === "ER_DUP_ENTRY")
-      return res.status(409).json({ error: "Código ya existe" });
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.update = async (req, res) => {
   try {
-    const {
-      codigo,
-      titulo,
-      autor,
-      editorial,
-      volumen,
-      idioma,
-      genero,
-      estanteria,
-      estado,
-    } = req.body;
+    const { titulo, autor, editorial, volumen, idioma, genero, estanteria, estado } = req.body;
     await db.query(
-      "UPDATE libro SET codigo=?, titulo=?, autor=?, editorial=?, volumen=?, idioma=?, genero=?, estanteria=?, estado=? WHERE id=?",
+      "UPDATE libro SET titulo=?, autor=?, editorial=?, volumen=?, idioma=?, genero=?, estanteria=?, estado=? WHERE id=?",
       [
-        codigo,
         titulo,
         autor || null,
         editorial || null,

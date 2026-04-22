@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
+import Toast, { useToast } from '../components/Toast';
 
 const CURSOS = [
   '1º Primaria',
@@ -77,6 +78,10 @@ export default function Usuarios() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!form.email.toLowerCase().endsWith('@juandelanuza.org')) {
+      setError('El email debe ser del dominio @juandelanuza.org');
+      return;
+    }
     try {
       const payload = {
         ...form,
@@ -85,6 +90,7 @@ export default function Usuarios() {
       if (editing) await api.put(`/usuarios/${editing.id}`, payload);
       else await api.post('/usuarios', payload);
       setModal(false);
+      showToast(editing ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente');
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar');
@@ -94,9 +100,11 @@ export default function Usuarios() {
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar este usuario?')) return;
     await api.delete(`/usuarios/${id}`);
+    showToast('Usuario eliminado');
     load();
   };
 
+  const { toast, showToast } = useToast();
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSearchInput = (val) => {
@@ -220,7 +228,6 @@ export default function Usuarios() {
             <option value="alumno">Alumno</option>
             <option value="profesorado">Profesorado</option>
             <option value="personal">Personal</option>
-            <option value="admin">Admin</option>
             <option value="biblioteca">Biblioteca</option>
           </select>
           <select
@@ -403,11 +410,10 @@ export default function Usuarios() {
                     <option value="alumno">Alumno</option>
                     <option value="profesorado">Profesorado</option>
                     <option value="personal">Personal</option>
-                    <option value="admin">Admin</option>
                     <option value="biblioteca">Biblioteca</option>
                   </select>
                 </div>
-                {form.rol !== 'personal' && (
+                {form.rol !== 'personal' && form.rol !== 'biblioteca' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
                       Ubicación
@@ -447,6 +453,7 @@ export default function Usuarios() {
           </div>
         </div>
       )}
+      <Toast toast={toast} />
     </div>
   );
 }

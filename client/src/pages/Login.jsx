@@ -19,8 +19,12 @@ export default function Login() {
       const { data } = await api.post('/auth/login', form);
       login(data.token);
       navigate('/');
-    } catch {
-      setError('Email o contraseña incorrectos');
+    } catch (err) {
+      if (err.response?.status === 429) {
+        setError('Demasiados intentos. Espera 15 minutos e inténtalo de nuevo.');
+      } else {
+        setError('Email o contraseña incorrectos');
+      }
     } finally {
       setLoading(false);
     }
@@ -47,7 +51,7 @@ export default function Login() {
           {/* Logo siempre visible en el formulario */}
           <div className="flex flex-col items-center mb-8">
             <img
-              src="/arbol_logo_transparente.png"
+              src="/arbol_logo_transparente_bordes.png"
               alt="Logo Juan de Lanuza"
               className="h-24 object-contain mb-3"
             />
@@ -78,7 +82,7 @@ export default function Login() {
                   setForm((f) => ({ ...f, email: e.target.value }))
                 }
                 className="w-full border-b-2 border-gray-200 focus:border-brand-600 px-0 py-2 text-sm outline-none transition-colors bg-transparent"
-                placeholder="tucorreo@ejemplo.com"
+                placeholder="tucorreo@juandelanuza.org"
               />
             </div>
 

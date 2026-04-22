@@ -23,6 +23,9 @@ exports.register = async (req, res) => {
     if (!nombre || !apellidos || !email || !password || !rol) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
+    if (!email.toLowerCase().endsWith('@juandelanuza.org')) {
+      return res.status(400).json({ error: 'El email debe ser del dominio @juandelanuza.org' });
+    }
     const [exists] = await db.query("SELECT id FROM usuario WHERE email = ?", [
       email,
     ]);

@@ -105,7 +105,7 @@ export default function MiEspacio() {
     </th>
   );
 
-  const qrValue = `USR-${String(user?.id).padStart(4, '0')}`;
+  const qrValue = user?.codigo || `U_${String(user?.id).padStart(4, '0')}`;
 
   const imprimirTarjeta = () => {
     const iframe = document.getElementById('iframe-tarjeta');
@@ -115,7 +115,6 @@ export default function MiEspacio() {
     doc.write(`
       <html>
         <head>
-          <title>Tarjeta_${user.apellidos}_${user.nombre}</title>
           <style>
             @font-face { font-family: 'Essai'; src: url('/fonts/Essai.ttf') format('truetype'); }
             @page { size: 85.6mm 54mm; margin: 0; }
@@ -186,9 +185,9 @@ export default function MiEspacio() {
         </div>
         <button
           onClick={() => navigate('/')}
-          className="text-sm text-brand-200 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-brand-100 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-all"
         >
-          ← Catálogo
+          <span>←</span> Volver al catálogo
         </button>
       </header>
 
@@ -245,7 +244,7 @@ export default function MiEspacio() {
                       <p className="text-xs text-gray-400 uppercase mb-1">
                         {label}
                       </p>
-                      <p className="font-medium text-gray-800 capitalize">
+                      <p className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase' : 'capitalize'}`}>
                         {val}
                       </p>
                     </div>

@@ -13,13 +13,18 @@ export default function LibroCard({ libro }) {
     : '/portada-default.png';
 
   return (
-    <Link to={`/libros/${libro.id}`} className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer">
+    <Link
+      to={`/libros/${libro.id}`}
+      className="group bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer"
+    >
       {/* Portada */}
       <div className="relative aspect-[3/4] bg-slate-100 overflow-hidden">
         <img
           src={imgSrc}
           alt={libro.titulo}
-          onError={(e) => { e.target.src = '/portada-default.png'; }}
+          onError={(e) => {
+            e.target.src = '/portada-default.png';
+          }}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute top-2 right-2">
@@ -40,19 +45,40 @@ export default function LibroCard({ libro }) {
 
         <div className="text-xs space-y-1.5 text-slate-500 flex-1">
           {libro.autor && (
-            <p><span className="font-semibold text-slate-700">Autor: </span>{libro.autor}</p>
+            <p>
+              <span className="font-semibold text-slate-700">Autor: </span>
+              {libro.autor}
+            </p>
           )}
           {libro.genero && (
-            <p><span className="font-semibold text-slate-700">Género: </span>{libro.genero}</p>
+            <p>
+              <span className="font-semibold text-slate-700">Género: </span>
+              {libro.genero}
+            </p>
           )}
           {libro.editorial && (
-            <p><span className="font-semibold text-slate-700">Editorial: </span>{libro.editorial}</p>
+            <p>
+              <span className="font-semibold text-slate-700">Editorial: </span>
+              {libro.editorial}
+            </p>
           )}
           {libro.idioma && (
-            <p><span className="font-semibold text-slate-700">Idioma: </span>{libro.idioma}</p>
+            <p>
+              <span className="font-semibold text-slate-700">Idioma: </span>
+              {libro.idioma}
+            </p>
           )}
           {libro.estanteria && (
-            <p><span className="font-semibold text-slate-700">Estantería: </span>{libro.estanteria}</p>
+            <p>
+              <span className="font-semibold text-slate-700">Estantería: </span>
+              {libro.estanteria}
+            </p>
+          )}
+          {libro.estanteria && (
+            <p>
+              <span className="font-semibold text-slate-700">Estantería: </span>
+              {libro.estanteria}
+            </p>
           )}
         </div>
       </div>

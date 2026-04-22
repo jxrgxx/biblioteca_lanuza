@@ -17,7 +17,6 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.get("/", ctrl.getAll);
 router.get("/filtros/generos", ctrl.getGeneros);
-router.get("/next-codigo", ctrl.getNextCodigo);
 router.get("/filtros/idiomas", ctrl.getIdiomas);
 router.get("/filtros/editoriales", ctrl.getEditoriales);
 router.get("/filtros/estanterias", ctrl.getEstanterias);

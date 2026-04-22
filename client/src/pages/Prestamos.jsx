@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import { fmt } from '../utils/dates';
+import Toast, { useToast } from '../components/Toast';
 
-const USR_RE = /^USR-(\d{1,4})$/i;
+const USR_RE = /^U_(\d{1,4})$/i;
 const COL_RE = /^COL-(\d{1,4})$/i;
 
 const EMPTY_FORM = {
@@ -23,12 +24,12 @@ const PAGE_SIZE = 50;
 
 export default function Prestamos() {
   const [prestamos, setPrestamos] = useState([]);
-  const [filtro, setFiltro] = useState('0');
+  const [filtroEstado, setFiltroEstado] = useState('activos');
 
   // Buscador
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [filtroVencido, setFiltroVencido] = useState('');
+  const [filtroMes, setFiltroMes] = useState('');
   const debounceRef = useRef(null);
 
   // Ordenación y paginación
@@ -56,14 +57,14 @@ export default function Prestamos() {
   const today = new Date().toISOString().split('T')[0];
 
   const load = async () => {
-    const { data } = await api.get(`/prestamos?devuelto=${filtro}`);
+    const { data } = await api.get('/prestamos');
     setPrestamos(data);
     setPage(1);
   };
 
   useEffect(() => {
     load();
-  }, [filtro]);
+  }, []);
 
   const handleSearchInput = (val) => {
     setSearchInput(val);
@@ -79,8 +80,19 @@ export default function Prestamos() {
     p.fecha_devolucion_prevista < today &&
     !p.devuelto;
 
+  // Meses disponibles para el filtro
+  const mesesDisponibles = [...new Set(
+    prestamos
+      .map((p) => p.fecha_inicio?.slice(0, 7))
+      .filter(Boolean)
+  )].sort().reverse();
+
   // Filtrado client-side
   const filtered = prestamos.filter((p) => {
+    if (filtroEstado === 'activos' && (p.devuelto || vencido(p))) return false;
+    if (filtroEstado === 'vencidos' && !vencido(p)) return false;
+    if (filtroEstado === 'devueltos' && !p.devuelto) return false;
+    if (filtroMes && !p.fecha_inicio?.startsWith(filtroMes)) return false;
     if (search) {
       const q = search.toLowerCase();
       const matches =
@@ -89,8 +101,6 @@ export default function Prestamos() {
         p.libro_titulo?.toLowerCase().includes(q);
       if (!matches) return false;
     }
-    if (filtroVencido === 'si' && !vencido(p)) return false;
-    if (filtroVencido === 'no' && vencido(p)) return false;
     return true;
   });
 
@@ -130,11 +140,11 @@ export default function Prestamos() {
     </th>
   );
 
-  const hayFiltros = searchInput || filtroVencido;
+  const hayFiltros = searchInput || filtroMes;
   const limpiarFiltros = () => {
     setSearchInput('');
     setSearch('');
-    setFiltroVencido('');
+    setFiltroMes('');
     setPage(1);
   };
 
@@ -144,7 +154,7 @@ export default function Prestamos() {
     clearTimeout(usrDebounce.current);
     const match = val.match(USR_RE);
     if (!match) {
-      if (val) setUsuarioError('Formato inválido. Usa USR-0000');
+      if (val) setUsuarioError('Formato inválido. Usa U_0000');
       return;
     }
     const id = parseInt(match[1], 10);
@@ -201,7 +211,7 @@ export default function Prestamos() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!usuarioPreview) return setError('Introduce un código de usuario válido (USR-0000)');
+    if (!usuarioPreview) return setError('Introduce un código de usuario válido (U_0000)');
     if (!libroPreview) return setError('Introduce un código de libro válido (COL-0000)');
     if (libroPreview.estado !== 'disponible')
       return setError(`El libro no está disponible (estado: ${libroPreview.estado})`);
@@ -213,6 +223,7 @@ export default function Prestamos() {
         fecha_devolucion_prevista: form.fecha_devolucion_prevista,
       });
       setModal(false);
+      showToast('Préstamo creado correctamente');
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al crear préstamo');
@@ -238,6 +249,7 @@ export default function Prestamos() {
     try {
       await api.put(`/prestamos/${editId}`, editForm);
       setEditModal(false);
+      showToast('Préstamo actualizado correctamente');
       load();
     } catch (err) {
       setEditError(err.response?.data?.error || 'Error al editar préstamo');
@@ -249,6 +261,7 @@ export default function Prestamos() {
       return;
     try {
       await api.delete(`/prestamos/${id}`);
+      showToast('Préstamo eliminado');
       load();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al eliminar préstamo');
@@ -260,9 +273,11 @@ export default function Prestamos() {
     await api.put(`/prestamos/${id}/devolver`, {
       fecha_devolucion_real: today,
     });
+    showToast('Devolución registrada');
     load();
   };
 
+  const { toast, showToast } = useToast();
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setE = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
 
@@ -278,30 +293,37 @@ export default function Prestamos() {
         </button>
       </div>
 
-      {/* Tabs devuelto */}
-      <div className="flex gap-2 mb-4">
+      {/* Pills de estado */}
+      <div className="flex flex-wrap gap-2 mb-4">
         {[
-          ['0', 'No Devueltos'],
-          ['1', 'Devueltos'],
-          ['', 'Todos'],
-        ].map(([v, l]) => (
+          { v: 'activos',   l: 'Activos',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
+          { v: 'vencidos',  l: 'Vencidos',  color: 'bg-red-100 text-red-700 border-red-200' },
+          { v: 'devueltos', l: 'Devueltos', color: 'bg-green-100 text-green-700 border-green-200' },
+          { v: '',          l: 'Todos',     color: 'bg-gray-100 text-gray-600 border-gray-200' },
+        ].map(({ v, l, color }) => (
           <button
             key={v}
-            onClick={() => setFiltro(v)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${filtro === v ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
+            onClick={() => { setFiltroEstado(v); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              filtroEstado === v
+                ? color + ' font-semibold'
+                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+            }`}
           >
             {l}
+            {v === 'activos'   && <span className="ml-1.5 text-xs opacity-70">{prestamos.filter(p => !p.devuelto && !vencido(p)).length}</span>}
+            {v === 'vencidos'  && <span className="ml-1.5 text-xs opacity-70">{prestamos.filter(vencido).length}</span>}
+            {v === 'devueltos' && <span className="ml-1.5 text-xs opacity-70">{prestamos.filter(p => p.devuelto).length}</span>}
+            {v === ''          && <span className="ml-1.5 text-xs opacity-70">{prestamos.length}</span>}
           </button>
         ))}
       </div>
 
-      {/* Buscador */}
+      {/* Buscador y filtros */}
       <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-              🔍
-            </span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
             <input
               placeholder="Buscar por nombre, apellidos o título del libro..."
               value={searchInput}
@@ -318,10 +340,7 @@ export default function Prestamos() {
             )}
           </div>
           {hayFiltros && (
-            <button
-              onClick={limpiarFiltros}
-              className="text-sm text-brand-600 hover:underline whitespace-nowrap"
-            >
+            <button onClick={limpiarFiltros} className="text-sm text-brand-600 hover:underline whitespace-nowrap">
               Limpiar filtros
             </button>
           )}
@@ -329,24 +348,22 @@ export default function Prestamos() {
 
         <div className="flex flex-wrap gap-2">
           <select
-            value={filtroVencido}
-            onChange={(e) => {
-              setFiltroVencido(e.target.value);
-              setPage(1);
-            }}
-            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroVencido ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
+            value={filtroMes}
+            onChange={(e) => { setFiltroMes(e.target.value); setPage(1); }}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroMes ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
           >
-            <option value="">Filtro de vencimiento</option>
-            <option value="si">Fuera de plazo</option>
-            <option value="no">Dentro de plazo</option>
+            <option value="">Todos los meses</option>
+            {mesesDisponibles.map((m) => {
+              const [y, mo] = m.split('-');
+              const label = new Date(y, mo - 1).toLocaleString('es', { month: 'long', year: 'numeric' });
+              return <option key={m} value={m}>{label}</option>;
+            })}
           </select>
         </div>
 
         <p className="text-xs text-gray-400">
           {filtered.length}{' '}
-          {filtered.length === 1
-            ? 'préstamo encontrado'
-            : 'préstamos encontrados'}
+          {filtered.length === 1 ? 'préstamo encontrado' : 'préstamos encontrados'}
           {hayFiltros && ' con los filtros aplicados'}
         </p>
       </div>
@@ -467,10 +484,10 @@ export default function Prestamos() {
               {/* Usuario QR */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Código QR usuario <span className="text-gray-400">(USR-0000)</span>
+                  Código QR usuario <span className="text-gray-400">(U_0000)</span>
                 </label>
                 <input
-                  placeholder="USR-0017"
+                  placeholder="U_0017"
                   value={form.qrUsuario}
                   onChange={(e) => {
                     const v = e.target.value.toUpperCase();
@@ -641,6 +658,7 @@ export default function Prestamos() {
           </div>
         </div>
       )}
+      <Toast toast={toast} />
     </div>
   );
 }

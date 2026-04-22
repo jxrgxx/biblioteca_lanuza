@@ -4,7 +4,7 @@ const db = require("../db");
 exports.getAll = async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, nombre, apellidos, email, rol, ubicacion FROM usuario ORDER BY apellidos, nombre",
+      "SELECT id, codigo, nombre, apellidos, email, rol, ubicacion FROM usuario ORDER BY apellidos, nombre",
     );
     res.json(rows);
   } catch (err) {
@@ -15,7 +15,7 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
+      "SELECT id, codigo, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length)
@@ -32,14 +32,22 @@ exports.create = async (req, res) => {
     if (!nombre || !apellidos || !email || !password || !rol) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
+    if (!email.toLowerCase().endsWith('@juandelanuza.org')) {
+      return res.status(400).json({ error: 'El email debe ser del dominio @juandelanuza.org' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const [result] = await db.query(
       "INSERT INTO usuario (nombre, apellidos, email, password, rol, ubicacion) VALUES (?,?,?,?,?,?)",
       [nombre, apellidos, email, hash, rol, ubicacion || null],
     );
+    const newId = result.insertId;
+    await db.query(
+      "UPDATE usuario SET codigo = CONCAT('U_', LPAD(?, 4, '0')) WHERE id = ?",
+      [newId, newId]
+    );
     const [rows] = await db.query(
-      "SELECT id, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
-      [result.insertId],
+      "SELECT id, codigo, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
+      [newId],
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -65,7 +73,7 @@ exports.update = async (req, res) => {
       );
     }
     const [rows] = await db.query(
-      "SELECT id, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
+      "SELECT id, codigo, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?",
       [req.params.id],
     );
     if (!rows.length)

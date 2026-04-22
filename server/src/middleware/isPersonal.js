@@ -1,4 +1,4 @@
-const ROLES_GESTION = ['admin', 'biblioteca'];
+const ROLES_GESTION = ['biblioteca'];
 
 module.exports = (req, res, next) => {
   if (!ROLES_GESTION.includes(req.user?.rol)) {

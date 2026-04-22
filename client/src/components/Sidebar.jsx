@@ -126,28 +126,28 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div
-        className={`border-t border-brand-600 py-4 ${collapsed ? 'flex flex-col items-center gap-3' : 'px-5 space-y-2'}`}
-      >
+      <div className={`border-t border-brand-600 py-3 ${collapsed ? 'flex flex-col items-center gap-2 px-2' : 'px-3 space-y-1.5'}`}>
         {!collapsed && (
-          <p className="text-xs text-brand-300 truncate">
+          <p className="text-xs text-brand-300 truncate px-2 mb-1">
             {user?.nombre} {user?.apellidos}
           </p>
         )}
         <button
           onClick={() => navigate('/mi-espacio')}
           title="Mi espacio"
-          className="text-brand-200 hover:text-white transition-colors text-xs flex items-center gap-1.5"
+          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-medium text-brand-100 hover:text-white hover:bg-white/10 transition-all
+            ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
         >
-          <span>👤</span>
+          <span className="text-base">👤</span>
           {!collapsed && 'Mi espacio'}
         </button>
         <button
           onClick={handleLogout}
           title="Cerrar sesión"
-          className="text-brand-200 hover:text-white transition-colors text-xs flex items-center gap-1.5"
+          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-500/20 transition-all
+            ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
         >
-          <span>🚪</span>
+          <span className="text-base">🚪</span>
           {!collapsed && 'Cerrar sesión'}
         </button>
       </div>

@@ -37,6 +37,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!form.email.toLowerCase().endsWith('@juandelanuza.org')) {
+      setError('El email debe ser del dominio @juandelanuza.org');
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -130,7 +134,7 @@ export default function Register() {
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
                 className="w-full border-b-2 border-gray-200 focus:border-brand-600 px-0 py-2 text-sm outline-none transition-colors bg-transparent"
-                placeholder="tucorreo@ejemplo.com"
+                placeholder="tucorreo@juandelanuza.org"
               />
             </div>
 

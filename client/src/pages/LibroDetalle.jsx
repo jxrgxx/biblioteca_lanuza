@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import Footer from '../components/Footer';
 import {
   ArrowLeft,
   BookOpen,
@@ -255,6 +256,7 @@ export default function LibroDetalle() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

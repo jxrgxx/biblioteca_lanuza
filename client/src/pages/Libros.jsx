@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import api from '../services/api';
+import Toast, { useToast } from '../components/Toast';
 
 const ESTADOS = ['disponible', 'prestado', 'extraviado', 'no disponible'];
 
@@ -19,7 +20,6 @@ const CURSOS = [
 ];
 
 const EMPTY = {
-  codigo: '',
   titulo: '',
   autor: '',
   editorial: '',
@@ -57,6 +57,7 @@ export default function Libros() {
   const [form, setForm] = useState(EMPTY);
   const [fotoFile, setFotoFile] = useState(null);
   const [error, setError] = useState('');
+  const { toast, showToast } = useToast();
 
   const [generos, setGeneros] = useState([]);
   const [idiomas, setIdiomas] = useState([]);
@@ -156,12 +157,11 @@ export default function Libros() {
     </th>
   );
 
-  const openNew = async () => {
+  const openNew = () => {
     setEditing(null);
     setFotoFile(null);
     setError('');
-    const { data } = await api.get('/libros/next-codigo');
-    setForm({ ...EMPTY, codigo: data.codigo });
+    setForm(EMPTY);
     setModal(true);
   };
   const openEdit = (l) => {
@@ -191,6 +191,7 @@ export default function Libros() {
         await api.post(`/libros/${libro.id}/foto${params}`, fd);
       }
       setModal(false);
+      showToast(editing ? 'Libro actualizado correctamente' : 'Libro creado correctamente');
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar');
@@ -200,6 +201,7 @@ export default function Libros() {
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar este libro?')) return;
     await api.delete(`/libros/${id}`);
+    showToast('Libro eliminado');
     load();
   };
 
@@ -410,17 +412,18 @@ export default function Libros() {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Código *
-                  </label>
-                  <input
-                    required
-                    value={form.codigo}
-                    onChange={(e) => set('codigo', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
+                {editing && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Código
+                    </label>
+                    <input
+                      readOnly
+                      value={editing.codigo}
+                      className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm font-mono text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Volumen
@@ -584,6 +587,7 @@ export default function Libros() {
           </div>
         </div>
       )}
+      <Toast toast={toast} />
     </div>
   );
 }

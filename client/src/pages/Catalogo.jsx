@@ -110,7 +110,7 @@ export default function Catalogo() {
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/arbol_logo_transparente.png"
+              src="/arbol_logo_transparente_bordes.png"
               alt="Logo"
               className="h-10 object-contain"
             />
