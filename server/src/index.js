@@ -24,6 +24,7 @@ app.use('/api/libros', require('./routes/libros'));
 app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/prestamos', require('./routes/prestamos'));
 app.use('/api/registro', require('./routes/registro'));
+app.use('/api/config', require('./routes/config'));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () =>

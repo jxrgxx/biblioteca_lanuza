@@ -41,6 +41,10 @@ export default function Usuarios() {
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
+  const [modalCodigo, setModalCodigo] = useState(false);
+  const [codigoRegistro, setCodigoRegistro] = useState('');
+  const [loadingCodigo, setLoadingCodigo] = useState(false);
+
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
@@ -73,6 +77,27 @@ export default function Usuarios() {
     setError('');
     setShowPass(false);
     setModal(true);
+  };
+
+  const abrirModalCodigo = async () => {
+    setModalCodigo(true);
+    setLoadingCodigo(true);
+    try {
+      const { data } = await api.get('/config/codigo-registro');
+      setCodigoRegistro(data.codigo);
+    } finally {
+      setLoadingCodigo(false);
+    }
+  };
+
+  const generarNuevoCodigo = async () => {
+    setLoadingCodigo(true);
+    try {
+      const { data } = await api.post('/config/codigo-registro');
+      setCodigoRegistro(data.codigo);
+    } finally {
+      setLoadingCodigo(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -179,12 +204,20 @@ export default function Usuarios() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
-        <button
-          onClick={openNew}
-          className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          + Añadir usuario
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={abrirModalCodigo}
+            className="border border-brand-600 text-brand-600 hover:bg-brand-50 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            Código de registro
+          </button>
+          <button
+            onClick={openNew}
+            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            + Añadir usuario
+          </button>
+        </div>
       </div>
 
       {/* Buscador */}
@@ -453,6 +486,43 @@ export default function Usuarios() {
           </div>
         </div>
       )}
+      {modalCodigo && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-800">Código de registro</h2>
+            <p className="text-sm text-gray-500">
+              Comparte este código con el personal o profesorado que quiera registrarse. Al generar uno nuevo, el anterior queda invalidado.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-center">
+                {loadingCodigo ? (
+                  <span className="text-gray-400 text-sm">Cargando...</span>
+                ) : codigoRegistro ? (
+                  <span className="text-2xl font-mono font-bold tracking-widest text-brand-600">
+                    {codigoRegistro}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-sm">Sin código generado</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={generarNuevoCodigo}
+              disabled={loadingCodigo}
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Generar nuevo código
+            </button>
+            <button
+              onClick={() => setModalCodigo(false)}
+              className="w-full text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} />
     </div>
   );

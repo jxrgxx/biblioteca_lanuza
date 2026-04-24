@@ -1,13 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  LayoutDashboard,
+  BookOpen,
+  Bookmark,
+  Users,
+  ClipboardList,
+  UserCircle,
+  LogOut,
+} from 'lucide-react';
 
 const nav = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { to: '/libros', label: 'Libros', icon: '📚' },
-  { to: '/prestamos', label: 'Préstamos', icon: '🔖' },
-  { to: '/usuarios', label: 'Usuarios', icon: '👥' },
-  { to: '/registro', label: 'Registro', icon: '📋' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/libros', label: 'Libros', icon: BookOpen },
+  { to: '/prestamos', label: 'Préstamos', icon: Bookmark },
+  { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/registro', label: 'Registro', icon: ClipboardList },
 ];
 
 const MIN_WIDTH = 160;
@@ -108,7 +117,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-3">
-        {nav.map(({ to, label, icon }) => (
+        {nav.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -119,7 +128,7 @@ export default function Sidebar() {
                ${isActive ? 'bg-brand-600 font-semibold' : 'hover:bg-brand-600/60'}`
             }
           >
-            <span className="text-base flex-shrink-0">{icon}</span>
+            <Icon size={18} className="flex-shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
           </NavLink>
         ))}
@@ -138,16 +147,16 @@ export default function Sidebar() {
           className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-medium text-brand-100 hover:text-white hover:bg-white/10 transition-all
             ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
         >
-          <span className="text-base">👤</span>
+          <UserCircle size={18} className="flex-shrink-0" />
           {!collapsed && 'Mi espacio'}
         </button>
         <button
           onClick={handleLogout}
           title="Cerrar sesión"
-          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-500/20 transition-all
+          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors
             ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
         >
-          <span className="text-base">🚪</span>
+          <LogOut size={18} className="flex-shrink-0" />
           {!collapsed && 'Cerrar sesión'}
         </button>
       </div>

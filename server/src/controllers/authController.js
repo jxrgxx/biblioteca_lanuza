@@ -26,6 +26,14 @@ exports.register = async (req, res) => {
     if (!email.toLowerCase().endsWith('@juandelanuza.org')) {
       return res.status(400).json({ error: 'El email debe ser del dominio @juandelanuza.org' });
     }
+    if (rol === 'profesorado' || rol === 'personal') {
+      const { codigoRegistro } = req.body;
+      const [cfg] = await db.query("SELECT valor FROM config WHERE clave = 'codigo_registro'");
+      const codigoActual = cfg[0]?.valor || '';
+      if (!codigoActual || !codigoRegistro || codigoRegistro.toUpperCase() !== codigoActual) {
+        return res.status(403).json({ error: 'Código de registro incorrecto' });
+      }
+    }
     const [exists] = await db.query("SELECT id FROM usuario WHERE email = ?", [
       email,
     ]);

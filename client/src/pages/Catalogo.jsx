@@ -122,14 +122,14 @@ export default function Catalogo() {
           {user ? (
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold leading-tight">
+                <p className="text-sm font-medium leading-tight">
                   {user.nombre} {user.apellidos}
                 </p>
                 <p className="text-brand-300 text-xs capitalize">{user.rol}</p>
               </div>
               <Link
                 to={esGestion(user.rol) ? '/dashboard' : '/mi-espacio'}
-                className="bg-white text-brand-700 font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-50 transition-colors"
+                className="bg-white text-brand-700 font-medium text-sm px-6 py-2 rounded-lg hover:bg-brand-50 transition-colors"
               >
                 {esGestion(user.rol) ? 'Gestión' : 'Mi espacio'}
               </Link>

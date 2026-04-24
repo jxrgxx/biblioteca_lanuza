@@ -1,4 +1,4 @@
-import { Mail, Clock, MapPin } from 'lucide-react';
+import { Mail, Clock, MapPin, BookOpen } from 'lucide-react';
 
 function Footer() {
   return (
@@ -8,7 +8,7 @@ function Footer() {
 
           {/* COLUMNA 1: INFO COLEGIO */}
           <div className="flex items-center gap-2">
-            <span className="text-lg">📚</span>
+            <BookOpen size={16} className="text-[#7F252E]" />
             <span className="font-bold text-[#7F252E] uppercase tracking-wider text-xs">
               Lanuza Libros
             </span>

@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  UserCircle,
+  BookOpen,
+  LogOut,
+  Printer,
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -14,8 +22,8 @@ const vencido = (p) =>
   !p.devuelto;
 
 const NAV = [
-  { id: 'perfil', label: 'Mi perfil', icon: '👤' },
-  { id: 'prestamos', label: 'Mis préstamos', icon: '📚' },
+  { id: 'perfil', label: 'Mi perfil', icon: UserCircle },
+  { id: 'prestamos', label: 'Mis préstamos', icon: BookOpen },
 ];
 
 export default function MiEspacio() {
@@ -25,6 +33,8 @@ export default function MiEspacio() {
   const [seccion, setSeccion] = useState('perfil');
   const [sortCol, setSortCol] = useState('fecha_inicio');
   const [sortDir, setSortDir] = useState('desc');
+  const [search, setSearch] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
 
   // Cambio de contraseña
   const [passForm, setPassForm] = useState({
@@ -82,7 +92,22 @@ export default function MiEspacio() {
     }
   };
 
-  const sortedPrestamos = [...prestamos].sort((a, b) => {
+  const filteredPrestamos = prestamos.filter((p) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !p.libro_titulo?.toLowerCase().includes(q) &&
+        !p.libro_codigo?.toLowerCase().includes(q)
+      )
+        return false;
+    }
+    if (filtroEstado === 'activo') return !p.devuelto && !vencido(p);
+    if (filtroEstado === 'vencido') return vencido(p);
+    if (filtroEstado === 'devuelto') return p.devuelto;
+    return true;
+  });
+
+  const sortedPrestamos = [...filteredPrestamos].sort((a, b) => {
     const va = a[sortCol] ?? '';
     const vb = b[sortCol] ?? '';
     const cmp = String(va).localeCompare(String(vb), 'es', {
@@ -185,9 +210,10 @@ export default function MiEspacio() {
         </div>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-sm font-medium text-brand-100 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-all"
+          className="flex items-center gap-2 text-white hover:text-brand-600 font-medium transition-all px-4 py-2 rounded-xl hover:bg-slate-100"
         >
-          <span>←</span> Volver al catálogo
+          <ArrowLeft size={20} />
+          <span className="hidden sm:inline">Volver al catálogo</span>
         </button>
       </header>
 
@@ -196,7 +222,7 @@ export default function MiEspacio() {
         {/* SIDEBAR */}
         <aside className="w-56 bg-white border-r border-gray-200 flex flex-col h-full shrink-0">
           <nav className="flex-1 p-4 space-y-1">
-            {NAV.map(({ id, label, icon }) => (
+            {NAV.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setSeccion(id)}
@@ -206,7 +232,7 @@ export default function MiEspacio() {
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <span>{icon}</span>
+                <Icon size={18} className="flex-shrink-0" />
                 {label}
               </button>
             ))}
@@ -214,9 +240,9 @@ export default function MiEspacio() {
           <div className="p-4 border-t border-gray-100">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors"
             >
-              <span>🚪</span> Cerrar sesión
+              <LogOut size={16} className="flex-shrink-0" /> Cerrar sesión
             </button>
           </div>
         </aside>
@@ -244,7 +270,9 @@ export default function MiEspacio() {
                       <p className="text-xs text-gray-400 uppercase mb-1">
                         {label}
                       </p>
-                      <p className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase' : 'capitalize'}`}>
+                      <p
+                        className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase' : 'capitalize'}`}
+                      >
                         {val}
                       </p>
                     </div>
@@ -283,7 +311,7 @@ export default function MiEspacio() {
                     onClick={imprimirTarjeta}
                     className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition-colors active:scale-95"
                   >
-                    🖨️ Imprimir tarjeta
+                    <Printer size={14} /> Imprimir tarjeta
                   </button>
                 </div>
 
@@ -428,6 +456,76 @@ export default function MiEspacio() {
               <h2 className="text-2xl font-bold text-gray-800">
                 Mis préstamos
               </h2>
+
+              {/* Buscador + filtros */}
+              <div className="bg-white rounded-xl shadow p-4 space-y-3">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                    🔍
+                  </span>
+                  <input
+                    placeholder="Buscar por título o código..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    {
+                      key: 'todos',
+                      label: 'Todos',
+                      count: prestamos.length,
+                      color: 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      active: 'bg-gray-600 text-white',
+                    },
+                    {
+                      key: 'activo',
+                      label: 'Activos',
+                      count: activos.filter((p) => !vencido(p)).length,
+                      color: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+                      active: 'bg-blue-600 text-white',
+                    },
+                    {
+                      key: 'vencido',
+                      label: 'Vencidos',
+                      count: activos.filter(vencido).length,
+                      color: 'bg-red-50 text-red-600 hover:bg-red-100',
+                      active: 'bg-red-600 text-white',
+                    },
+                    {
+                      key: 'devuelto',
+                      label: 'Devueltos',
+                      count: devueltos.length,
+                      color: 'bg-green-50 text-green-600 hover:bg-green-100',
+                      active: 'bg-green-600 text-white',
+                    },
+                  ].map(({ key, label, count, color, active }) => (
+                    <button
+                      key={key}
+                      onClick={() => setFiltroEstado(key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${filtroEstado === key ? active : color}`}
+                    >
+                      {label} <span className="opacity-70">({count})</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">
+                  {sortedPrestamos.length}{' '}
+                  {sortedPrestamos.length === 1
+                    ? 'préstamo encontrado'
+                    : 'préstamos encontrados'}
+                </p>
+              </div>
+
               <div className="bg-white rounded-xl shadow overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
@@ -482,13 +580,15 @@ export default function MiEspacio() {
                         </td>
                       </tr>
                     ))}
-                    {!prestamos.length && (
+                    {!sortedPrestamos.length && (
                       <tr>
                         <td
                           colSpan={5}
                           className="px-4 py-8 text-center text-gray-400"
                         >
-                          Sin préstamos
+                          {search || filtroEstado !== 'todos'
+                            ? 'Sin resultados con los filtros aplicados'
+                            : 'Sin préstamos'}
                         </td>
                       </tr>
                     )}

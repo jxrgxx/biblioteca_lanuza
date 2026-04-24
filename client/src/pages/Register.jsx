@@ -26,6 +26,7 @@ export default function Register() {
     password: '',
     rol: 'alumno',
     ubicacion: '',
+    codigoRegistro: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -185,6 +186,25 @@ export default function Register() {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {(form.rol === 'profesorado' || form.rol === 'personal') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Código de registro *
+                </label>
+                <input
+                  required
+                  value={form.codigoRegistro}
+                  onChange={(e) => set('codigoRegistro', e.target.value.toUpperCase())}
+                  maxLength={6}
+                  placeholder="XXXXXX"
+                  className="w-full border-b-2 border-gray-200 focus:border-brand-600 px-0 py-2 text-sm outline-none transition-colors bg-transparent font-mono tracking-widest uppercase"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Solicita este código al bibliotecario del centro.
+                </p>
               </div>
             )}
 
