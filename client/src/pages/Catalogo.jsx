@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BookOpen } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { esGestion } from '../components/PrivateRoute';
@@ -275,7 +276,7 @@ export default function Catalogo() {
           </div>
         ) : libros.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-            <span className="text-5xl mb-4">📚</span>
+            <BookOpen size={48} className="mb-4 text-gray-300" />
             <p className="text-sm">
               No se encontraron libros con esos filtros.
             </p>

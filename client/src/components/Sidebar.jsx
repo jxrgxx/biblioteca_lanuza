@@ -7,16 +7,18 @@ import {
   Bookmark,
   Users,
   ClipboardList,
+  BarChart2,
   UserCircle,
   LogOut,
 } from 'lucide-react';
 
 const nav = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/libros', label: 'Libros', icon: BookOpen },
-  { to: '/prestamos', label: 'Préstamos', icon: Bookmark },
-  { to: '/usuarios', label: 'Usuarios', icon: Users },
-  { to: '/registro', label: 'Registro', icon: ClipboardList },
+  { to: '/dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
+  { to: '/libros',        label: 'Libros',        icon: BookOpen },
+  { to: '/prestamos',     label: 'Préstamos',     icon: Bookmark },
+  { to: '/usuarios',      label: 'Usuarios',      icon: Users },
+  { to: '/registro',      label: 'Registro',      icon: ClipboardList },
+  { to: '/estadisticas',  label: 'Estadísticas',  icon: BarChart2 },
 ];
 
 const MIN_WIDTH = 160;

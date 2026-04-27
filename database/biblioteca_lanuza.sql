@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 22-04-2026 a las 11:17:10
+-- Tiempo de generación: 27-04-2026 a las 16:13:01
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -24,6 +24,28 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `config`
+--
+
+CREATE TABLE `config` (
+  `clave` varchar(50) NOT NULL,
+  `valor` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estanteria`
+--
+
+CREATE TABLE `estanteria` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `nombre` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `libro`
 --
 
@@ -37,16 +59,10 @@ CREATE TABLE `libro` (
   `idioma` varchar(50) DEFAULT NULL,
   `genero` varchar(100) DEFAULT NULL,
   `estanteria` varchar(50) DEFAULT NULL,
+  `categoria` varchar(100) NOT NULL,
   `estado` enum('disponible','prestado','extraviado','no disponible') NOT NULL DEFAULT 'disponible',
   `nombre_foto` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `libro`
---
-
-INSERT INTO `libro` (`id`, `codigo`, `titulo`, `autor`, `editorial`, `volumen`, `idioma`, `genero`, `estanteria`, `estado`, `nombre_foto`) VALUES
-(1, 'COL-0001', 'Invencible', 'Robert Kirkman', 'ECC', 144, 'Español', 'Superhéroes', 'H1', 'disponible', 'invencible_144_1776845616019.jpg');
 
 -- --------------------------------------------------------
 
@@ -56,6 +72,7 @@ INSERT INTO `libro` (`id`, `codigo`, `titulo`, `autor`, `editorial`, `volumen`, 
 
 CREATE TABLE `prestamo` (
   `id` int(10) UNSIGNED NOT NULL,
+  `codigo` varchar(6) DEFAULT NULL,
   `id_usuario` int(10) UNSIGNED NOT NULL,
   `id_libro` int(10) UNSIGNED NOT NULL,
   `fecha_inicio` date NOT NULL,
@@ -73,6 +90,7 @@ CREATE TABLE `prestamo` (
 CREATE TABLE `registro` (
   `id` int(10) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL,
+  `codigo_usuario` varchar(10) DEFAULT NULL,
   `curso` enum('1º Primaria','2º Primaria','3º Primaria','4º Primaria','5º Primaria','6º Primaria','1º ESO','2º ESO','3º ESO','4º ESO','1º Bach','2º Bach') NOT NULL,
   `fecha` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -95,15 +113,21 @@ CREATE TABLE `usuario` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `usuario`
---
-
-INSERT INTO `usuario` (`id`, `codigo`, `nombre`, `apellidos`, `email`, `password`, `rol`, `ubicacion`) VALUES
-(1, 'U_0001', 'biblioteca', '', 'biblioteca@juandelanuza.org', '$2a$10$nWpXNxHRyHt7Wyh8dXceTOFxZFb0V470nmVk4aW2QsL81kDRVH0dK', 'biblioteca', '---');
-
---
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `config`
+--
+ALTER TABLE `config`
+  ADD PRIMARY KEY (`clave`);
+
+--
+-- Indices de la tabla `estanteria`
+--
+ALTER TABLE `estanteria`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre` (`nombre`);
 
 --
 -- Indices de la tabla `libro`
@@ -117,6 +141,7 @@ ALTER TABLE `libro`
 --
 ALTER TABLE `prestamo`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `codigo` (`codigo`),
   ADD KEY `id_usuario` (`id_usuario`),
   ADD KEY `id_libro` (`id_libro`);
 
@@ -139,28 +164,34 @@ ALTER TABLE `usuario`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `estanteria`
+--
+ALTER TABLE `estanteria`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `libro`
 --
 ALTER TABLE `libro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `prestamo`
 --
 ALTER TABLE `prestamo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `registro`
 --
 ALTER TABLE `registro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- Restricciones para tablas volcadas

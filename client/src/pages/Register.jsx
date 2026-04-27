@@ -197,7 +197,9 @@ export default function Register() {
                 <input
                   required
                   value={form.codigoRegistro}
-                  onChange={(e) => set('codigoRegistro', e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    set('codigoRegistro', e.target.value.toUpperCase())
+                  }
                   maxLength={6}
                   placeholder="XXXXXX"
                   className="w-full border-b-2 border-gray-200 focus:border-brand-600 px-0 py-2 text-sm outline-none transition-colors bg-transparent font-mono tracking-widest uppercase"

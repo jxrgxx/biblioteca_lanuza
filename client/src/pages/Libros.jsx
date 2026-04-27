@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { Search } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
 
@@ -64,11 +65,20 @@ export default function Libros() {
   const [editoriales, setEditoriales] = useState([]);
   const [estanterias, setEstanterias] = useState([]);
 
+  const [modalEstanterias, setModalEstanterias] = useState(false);
+  const [nuevaEstanteria, setNuevaEstanteria] = useState('');
+  const [errorEstanteria, setErrorEstanteria] = useState('');
+
+  const loadEstanterias = async () => {
+    const { data } = await api.get('/estanterias');
+    setEstanterias(data);
+  };
+
   useEffect(() => {
     api.get('/libros/filtros/generos').then((r) => setGeneros(r.data));
     api.get('/libros/filtros/idiomas').then((r) => setIdiomas(r.data));
     api.get('/libros/filtros/editoriales').then((r) => setEditoriales(r.data));
-    api.get('/libros/filtros/estanterias').then((r) => setEstanterias(r.data));
+    loadEstanterias();
   }, []);
 
   // Debounce 300 ms en el buscador
@@ -187,11 +197,17 @@ export default function Libros() {
       if (fotoFile) {
         const fd = new FormData();
         fd.append('foto', fotoFile);
-        const params = form.nombre_foto ? `?nombre=${encodeURIComponent(form.nombre_foto)}` : '';
+        const params = form.nombre_foto
+          ? `?nombre=${encodeURIComponent(form.nombre_foto)}`
+          : '';
         await api.post(`/libros/${libro.id}/foto${params}`, fd);
       }
       setModal(false);
-      showToast(editing ? 'Libro actualizado correctamente' : 'Libro creado correctamente');
+      showToast(
+        editing
+          ? 'Libro actualizado correctamente'
+          : 'Libro creado correctamente'
+      );
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar');
@@ -207,27 +223,55 @@ export default function Libros() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  const handleAddEstanteria = async (e) => {
+    e.preventDefault();
+    setErrorEstanteria('');
+    try {
+      await api.post('/estanterias', { nombre: nuevaEstanteria });
+      setNuevaEstanteria('');
+      loadEstanterias();
+    } catch (err) {
+      setErrorEstanteria(err.response?.data?.error || 'Error al añadir');
+    }
+  };
+
+  const handleDeleteEstanteria = async (id) => {
+    if (!confirm('¿Eliminar esta estantería?')) return;
+    await api.delete(`/estanterias/${id}`);
+    loadEstanterias();
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Libros</h1>
-        <button
-          onClick={openNew}
-          className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          + Añadir libro
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setModalEstanterias(true);
+              setErrorEstanteria('');
+              setNuevaEstanteria('');
+            }}
+            className="border border-brand-600 text-brand-600 hover:bg-brand-50 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            Gestionar estanterías
+          </button>
+          <button
+            onClick={openNew}
+            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            + Añadir libro
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
         {/* Fila 1: buscador + limpiar */}
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-              🔍
-            </span>
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              placeholder="Buscar por título, autor o código..."
+              placeholder="Buscar por título, autor o código del libro"
               value={searchInput}
               onChange={(e) => handleSearchInput(e.target.value)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -282,7 +326,7 @@ export default function Libros() {
               label: 'Estantería',
               value: filtroEstanteria,
               set: setFiltroEstanteria,
-              opts: estanterias,
+              opts: estanterias.map((e) => e.nombre),
             },
           ].map(({ label, value, set, opts }) => (
             <select
@@ -503,7 +547,9 @@ export default function Libros() {
                   >
                     <option value="">— Selecciona —</option>
                     {estanterias.map((e) => (
-                      <option key={e} value={e}>{e}</option>
+                      <option key={e.id} value={e.nombre}>
+                        {e.nombre}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -537,31 +583,54 @@ export default function Libros() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Foto de portada{editing && editing.nombre_foto ? ' (cambiar)' : ''}
+                  Foto de portada
+                  {editing && editing.nombre_foto ? ' (cambiar)' : ''}
                 </label>
                 <div className="flex gap-2">
                   <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
                     📁 Seleccionar archivo
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => setFotoFile(e.target.files[0])} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setFotoFile(e.target.files[0])}
+                    />
                   </label>
                   <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
                     📷 Tomar foto
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setFotoFile(e.target.files[0])} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => setFotoFile(e.target.files[0])}
+                    />
                   </label>
                 </div>
                 {/* Preview */}
-                {(fotoFile || (editing?.nombre_foto)) && (
+                {(fotoFile || editing?.nombre_foto) && (
                   <div className="mt-2 flex items-center gap-3">
                     <img
-                      src={fotoFile ? URL.createObjectURL(fotoFile) : `/uploads/${editing.nombre_foto}`}
+                      src={
+                        fotoFile
+                          ? URL.createObjectURL(fotoFile)
+                          : `/uploads/${editing.nombre_foto}`
+                      }
                       alt="preview"
                       className="h-16 w-12 object-cover rounded-lg border border-gray-200"
                     />
                     <div className="text-xs text-gray-500">
                       {fotoFile ? (
-                        <><p className="font-medium text-gray-700">{fotoFile.name}</p><p>{(fotoFile.size / 1024).toFixed(0)} KB</p></>
+                        <>
+                          <p className="font-medium text-gray-700">
+                            {fotoFile.name}
+                          </p>
+                          <p>{(fotoFile.size / 1024).toFixed(0)} KB</p>
+                        </>
                       ) : (
-                        <p className="text-gray-400">Foto actual — selecciona una nueva para reemplazarla</p>
+                        <p className="text-gray-400">
+                          Foto actual — selecciona una nueva para reemplazarla
+                        </p>
                       )}
                     </div>
                   </div>
@@ -587,6 +656,70 @@ export default function Libros() {
           </div>
         </div>
       )}
+      {modalEstanterias && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-800">
+              Gestionar estanterías
+            </h2>
+
+            {/* Lista actual */}
+            <div className="space-y-1 max-h-52 overflow-y-auto">
+              {estanterias.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  Sin estanterías creadas
+                </p>
+              )}
+              {estanterias.map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50"
+                >
+                  <span className="text-sm font-medium text-gray-700">
+                    {e.nombre}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteEstanteria(e.id)}
+                    className="text-red-400 hover:text-red-600 text-xs"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Añadir nueva */}
+            <form
+              onSubmit={handleAddEstanteria}
+              className="flex gap-2 pt-2 border-t border-gray-100"
+            >
+              <input
+                value={nuevaEstanteria}
+                onChange={(e) => setNuevaEstanteria(e.target.value)}
+                placeholder="Nombre de la estantería"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                type="submit"
+                className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+              >
+                Añadir
+              </button>
+            </form>
+            {errorEstanteria && (
+              <p className="text-red-500 text-xs">{errorEstanteria}</p>
+            )}
+
+            <button
+              onClick={() => setModalEstanterias(false)}
+              className="w-full text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} />
     </div>
   );

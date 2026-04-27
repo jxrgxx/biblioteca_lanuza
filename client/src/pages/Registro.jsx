@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ScanLine, UserCheck, AlertCircle, PenLine, Search } from "lucide-react";
 import api from "../services/api";
 
 const CURSOS = [
@@ -8,16 +9,31 @@ const CURSOS = [
   "1º Bach", "2º Bach",
 ];
 
+const USR_RE = /^U_(\d{1,4})$/i;
 const PAGE_SIZE = 50;
 
 export default function Registro() {
   const today = new Date().toISOString().split("T")[0];
   const [fecha, setFecha] = useState(today);
   const [entradas, setEntradas] = useState([]);
-  const [form, setForm] = useState({ nombre: "", curso: CURSOS[0] });
   const [error, setError] = useState("");
 
-  // Buscador
+  // Escaneo QR
+  const [scanInput, setScanInput] = useState("");
+  const [preview, setPreview] = useState(null);   // { nombre, apellidos, ubicacion, id }
+  const [scanError, setScanError] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const scanRef = useRef(null);
+
+  // Entrada manual
+  const [modoManual, setModoManual] = useState(false);
+  const [alumnos, setAlumnos] = useState([]);
+  const [manualSearch, setManualSearch] = useState("");
+  const [manualPreview, setManualPreview] = useState(null);
+  const [manualError, setManualError] = useState("");
+  const manualDebounce = useRef(null);
+
+  // Buscador / filtros tabla
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [filtroCurso, setFiltroCurso] = useState("");
@@ -38,15 +54,117 @@ export default function Registro() {
 
   useEffect(() => { load(); }, [fecha]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (modoManual && alumnos.length === 0) {
+      api.get('/usuarios').then((r) =>
+        setAlumnos(r.data.filter((u) => u.rol === 'alumno'))
+      );
+    }
+    if (modoManual) {
+      setManualSearch("");
+      setManualPreview(null);
+      setManualError("");
+    }
+  }, [modoManual]);
+
+  // Mantener foco en el input de escaneo
+  useEffect(() => {
+    if (!modoManual) {
+      const t = setTimeout(() => scanRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [modoManual, preview]);
+
+  const resetScan = () => {
+    setScanInput("");
+    setPreview(null);
+    setScanError("");
+    setTimeout(() => scanRef.current?.focus(), 100);
+  };
+
+  const handleScan = async (e) => {
+    if (e.key !== "Enter") return;
+    const val = scanInput.trim();
+    if (!val) return;
+
+    const match = val.match(USR_RE);
+    if (!match) {
+      setScanError("Código no reconocido. Escanea un QR de usuario válido.");
+      setScanInput("");
+      return;
+    }
+
+    const id = parseInt(match[1], 10);
+    setScanLoading(true);
+    setScanError("");
+    setPreview(null);
+
+    try {
+      const { data } = await api.get(`/usuarios/${id}`);
+      if (data.rol !== "alumno") {
+        setScanError(`El usuario escaneado es ${data.rol}, no alumno. Solo se registran alumnos.`);
+        setScanInput("");
+        return;
+      }
+      if (!data.ubicacion) {
+        setScanError("El alumno no tiene curso asignado. Edita el usuario antes de registrarlo.");
+        setScanInput("");
+        return;
+      }
+      setPreview(data);
+      setScanInput("");
+    } catch {
+      setScanError("Usuario no encontrado.");
+      setScanInput("");
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  const handleAnadir = async () => {
     setError("");
     try {
-      await api.post("/registro", { ...form, fecha });
-      setForm((f) => ({ ...f, nombre: "" }));
+      const nombre = `${preview.nombre} ${preview.apellidos}`;
+      await api.post("/registro", { nombre, codigo_usuario: preview.codigo, curso: preview.ubicacion, fecha });
+      resetScan();
       load();
     } catch (err) {
       setError(err.response?.data?.error || "Error al guardar");
+    }
+  };
+
+  const handleManualSearch = (val) => {
+    setManualSearch(val);
+    setManualPreview(null);
+    setManualError("");
+  };
+
+  const manualResultados = manualSearch.trim().length >= 2
+    ? alumnos.filter((u) => {
+        const q = manualSearch.toLowerCase();
+        return (
+          u.nombre?.toLowerCase().includes(q) ||
+          u.apellidos?.toLowerCase().includes(q) ||
+          u.codigo?.toLowerCase().includes(q)
+        );
+      }).slice(0, 6)
+    : [];
+
+  const handleAnadirManual = async () => {
+    if (!manualPreview) return;
+    setManualError("");
+    try {
+      await api.post("/registro", {
+        nombre: `${manualPreview.nombre} ${manualPreview.apellidos}`,
+        codigo_usuario: manualPreview.codigo,
+        curso: manualPreview.ubicacion,
+        fecha,
+      });
+      setManualSearch("");
+      setManualPreview(null);
+      load();
+    } catch (err) {
+      setManualError(err.response?.data?.error || "Error al guardar");
     }
   };
 
@@ -110,7 +228,6 @@ export default function Registro() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pagina = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
   const hayFiltros = searchInput || filtroCurso;
 
   return (
@@ -118,41 +235,178 @@ export default function Registro() {
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Registro diario</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulario nuevo */}
-        <div className="bg-white rounded-xl shadow p-6 self-start">
-          <h2 className="font-semibold text-gray-700 mb-4">Añadir entrada</h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
-              <input
-                required
-                value={form.nombre}
-                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-                placeholder="Nombre del alumno"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Curso *</label>
-              <select
-                value={form.curso}
-                onChange={(e) => setForm((f) => ({ ...f, curso: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                {CURSOS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        {/* Panel izquierdo — escaneo / manual */}
+        <div className="bg-white rounded-xl shadow p-6 self-start space-y-4">
+
+          {/* Tabs */}
+          <div className="flex gap-2">
             <button
-              type="submit"
-              className="w-full bg-brand-600 hover:bg-brand-700 text-white py-2 rounded-lg text-sm font-medium"
+              onClick={() => { setModoManual(false); resetScan(); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${!modoManual ? 'bg-brand-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
             >
-              Añadir
+              <ScanLine size={15} /> Escanear QR
             </button>
-          </form>
+            <button
+              onClick={() => setModoManual(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${modoManual ? 'bg-brand-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+            >
+              <PenLine size={15} /> Manual
+            </button>
+          </div>
+
+          {/* Modo QR */}
+          {!modoManual && (
+            <div className="space-y-4">
+              {/* Input oculto pero activo para el escáner */}
+              <div
+                onClick={() => scanRef.current?.focus()}
+                className={`relative flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors ${
+                  scanLoading ? 'border-brand-300 bg-brand-50' :
+                  scanError   ? 'border-red-300 bg-red-50' :
+                  preview     ? 'border-green-300 bg-green-50' :
+                                'border-gray-300 hover:border-brand-400 hover:bg-brand-50/40'
+                }`}
+              >
+                <input
+                  ref={scanRef}
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  onKeyDown={handleScan}
+                  onBlur={(e) => {
+                    const next = e.relatedTarget;
+                    const esInputUsuario = next && (next.tagName === 'INPUT' || next.tagName === 'SELECT' || next.tagName === 'BUTTON' || next.tagName === 'TEXTAREA');
+                    if (!esInputUsuario) setTimeout(() => scanRef.current?.focus(), 200);
+                  }}
+                  className="absolute opacity-0 w-0 h-0"
+                  inputMode="none"
+                  autoFocus
+                />
+                {scanLoading ? (
+                  <p className="text-brand-600 text-sm font-medium">Buscando usuario...</p>
+                ) : preview ? (
+                  <>
+                    <UserCheck size={32} className="text-green-500" />
+                    <div className="text-center">
+                      <p className="font-bold text-gray-800">{preview.nombre} {preview.apellidos}</p>
+                      <p className="text-sm text-gray-500">{preview.ubicacion}</p>
+                      <p className="text-xs text-gray-400 font-mono mt-1">{preview.codigo}</p>
+                    </div>
+                  </>
+                ) : scanError ? (
+                  <>
+                    <AlertCircle size={32} className="text-red-400" />
+                    <p className="text-red-600 text-sm text-center">{scanError}</p>
+                    <p className="text-xs text-gray-400">Escanea de nuevo para reintentar</p>
+                  </>
+                ) : (
+                  <>
+                    <ScanLine size={32} className="text-gray-300" />
+                    <p className="text-gray-400 text-sm text-center">
+                      Apunta el escáner al QR del usuario
+                    </p>
+                    <p className="text-xs text-gray-300">El campo está listo para recibir el código</p>
+                  </>
+                )}
+              </div>
+
+              {preview && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAnadir}
+                    className="flex-1 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Añadir entrada
+                  </button>
+                  <button
+                    onClick={resetScan}
+                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+            </div>
+          )}
+
+          {/* Modo manual */}
+          {modoManual && (
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  autoFocus
+                  value={manualSearch}
+                  onChange={(e) => handleManualSearch(e.target.value)}
+                  placeholder="Nombre, apellidos o código U_XXXX..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                {manualSearch && (
+                  <button
+                    onClick={() => { setManualSearch(""); setManualPreview(null); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                  >×</button>
+                )}
+              </div>
+
+              {/* Resultados */}
+              {!manualPreview && manualSearch.trim().length >= 2 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  {manualResultados.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">No se encontró ningún alumno</p>
+                  ) : (
+                    manualResultados.map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => { setManualPreview(u); setManualSearch(""); }}
+                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-brand-50 transition-colors text-left border-b border-gray-100 last:border-0"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{u.nombre} {u.apellidos}</p>
+                          <p className="text-xs text-gray-400">{u.ubicacion || '—'}</p>
+                        </div>
+                        <span className="text-xs font-mono text-gray-400">{u.codigo}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Preview seleccionado */}
+              {manualPreview && (
+                <div className="border border-green-200 bg-green-50 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">{manualPreview.nombre} {manualPreview.apellidos}</p>
+                    <p className="text-xs text-gray-500">{manualPreview.ubicacion}</p>
+                  </div>
+                  <span className="text-xs font-mono text-gray-400">{manualPreview.codigo}</span>
+                </div>
+              )}
+
+              {manualError && <p className="text-red-500 text-sm">{manualError}</p>}
+
+              {manualPreview && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAnadirManual}
+                    className="flex-1 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Añadir entrada
+                  </button>
+                  <button
+                    onClick={() => setManualPreview(null)}
+                    className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Tabla */}
+        {/* Panel derecho — tabla */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow flex flex-col">
           {/* Cabecera */}
           <div className="px-6 py-4 border-b flex items-center justify-between gap-4">
@@ -170,7 +424,7 @@ export default function Registro() {
           {/* Buscador */}
           <div className="px-6 py-3 border-b flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-0">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 placeholder="Buscar por nombre..."
                 value={searchInput}
@@ -202,12 +456,13 @@ export default function Registro() {
             )}
           </div>
 
-          {/* Tabla de entradas */}
+          {/* Tabla */}
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 uppercase text-xs sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left">#</th>
+                  <Th col="codigo_usuario">Código</Th>
                   <Th col="nombre">Nombre</Th>
                   <Th col="curso">Curso</Th>
                   <th className="px-4 py-3 text-left">Acciones</th>
@@ -219,6 +474,7 @@ export default function Registro() {
                     <td className="px-4 py-3 text-gray-400">{(page - 1) * PAGE_SIZE + i + 1}</td>
                     {editId === e.id ? (
                       <>
+                        <td className="px-4 py-2 font-mono text-xs text-gray-400">{e.codigo_usuario || '—'}</td>
                         <td className="px-4 py-2">
                           <input
                             value={editForm.nombre}
@@ -236,29 +492,18 @@ export default function Registro() {
                           </select>
                         </td>
                         <td className="px-4 py-2 flex gap-2">
-                          <button
-                            onClick={() => handleEditSave(e.id)}
-                            className="text-green-600 hover:underline text-xs"
-                          >Guardar</button>
-                          <button
-                            onClick={() => setEditId(null)}
-                            className="text-gray-400 hover:underline text-xs"
-                          >Cancelar</button>
+                          <button onClick={() => handleEditSave(e.id)} className="text-green-600 hover:underline text-xs">Guardar</button>
+                          <button onClick={() => setEditId(null)} className="text-gray-400 hover:underline text-xs">Cancelar</button>
                         </td>
                       </>
                     ) : (
                       <>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{e.codigo_usuario || '—'}</td>
                         <td className="px-4 py-3 font-medium">{e.nombre}</td>
                         <td className="px-4 py-3 text-gray-600">{e.curso}</td>
                         <td className="px-4 py-3 flex gap-3">
-                          <button
-                            onClick={() => startEdit(e)}
-                            className="text-brand-600 hover:underline text-xs"
-                          >Editar</button>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            className="text-red-400 hover:text-red-600 text-xs"
-                          >Eliminar</button>
+                          <button onClick={() => startEdit(e)} className="text-brand-600 hover:underline text-xs">Editar</button>
+                          <button onClick={() => handleDelete(e.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
                         </td>
                       </>
                     )}
@@ -266,7 +511,7 @@ export default function Registro() {
                 ))}
                 {!pagina.length && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                       Sin entradas para esta fecha
                     </td>
                   </tr>

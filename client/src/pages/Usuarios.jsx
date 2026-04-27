@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Search } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
 
@@ -31,6 +31,7 @@ const rolBadge = {
   personal: 'bg-purple-100 text-purple-700',
   profesorado: 'bg-brand-100 text-brand-700',
   alumno: 'bg-green-100 text-green-700',
+  biblioteca: 'bg-blue-100 text-blue-700',
 };
 
 export default function Usuarios() {
@@ -115,7 +116,11 @@ export default function Usuarios() {
       if (editing) await api.put(`/usuarios/${editing.id}`, payload);
       else await api.post('/usuarios', payload);
       setModal(false);
-      showToast(editing ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente');
+      showToast(
+        editing
+          ? 'Usuario actualizado correctamente'
+          : 'Usuario creado correctamente'
+      );
       load();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar');
@@ -147,7 +152,8 @@ export default function Usuarios() {
       if (
         !u.nombre?.toLowerCase().includes(q) &&
         !u.apellidos?.toLowerCase().includes(q) &&
-        !u.email?.toLowerCase().includes(q)
+        !u.email?.toLowerCase().includes(q) &&
+        !u.codigo?.toLowerCase().includes(q)
       )
         return false;
     }
@@ -224,11 +230,9 @@ export default function Usuarios() {
       <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-              🔍
-            </span>
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              placeholder="Buscar por nombre, apellidos o email..."
+              placeholder="Buscar por nombre, apellidos, email o código"
               value={searchInput}
               onChange={(e) => handleSearchInput(e.target.value)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -268,7 +272,7 @@ export default function Usuarios() {
             onChange={(e) => setFiltroUbicacion(e.target.value)}
             className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroUbicacion ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
           >
-            <option value="">Curso / Ubicación</option>
+            <option value="">Ubicación</option>
             {CURSOS.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -289,7 +293,9 @@ export default function Usuarios() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
-              <Th col="apellidos">Nombre</Th>
+              <Th col="codigo">Código</Th>
+              <Th col="nombre">Nombre</Th>
+              <Th col="apellidos">Apellidos</Th>
               <Th col="email">Email</Th>
               <Th col="rol">Rol</Th>
               <Th col="ubicacion">Ubicación</Th>
@@ -299,9 +305,11 @@ export default function Usuarios() {
           <tbody className="divide-y divide-gray-100">
             {pagina.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">
-                  {u.apellidos}, {u.nombre}
+                <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  {u.codigo || '—'}
                 </td>
+                <td className="px-4 py-3 font-medium">{u.nombre}</td>
+                <td className="px-4 py-3 font-medium">{u.apellidos}</td>
                 <td className="px-4 py-3 text-gray-600">{u.email}</td>
                 <td className="px-4 py-3">
                   <span
@@ -331,7 +339,7 @@ export default function Usuarios() {
             ))}
             {!sorted.length && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   {hayFiltros
                     ? 'Sin resultados con los filtros aplicados'
                     : 'Sin usuarios'}
@@ -486,12 +494,16 @@ export default function Usuarios() {
           </div>
         </div>
       )}
+
       {modalCodigo && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800">Código de registro</h2>
+            <h2 className="text-lg font-bold text-gray-800">
+              Código de registro
+            </h2>
             <p className="text-sm text-gray-500">
-              Comparte este código con el personal o profesorado que quiera registrarse. Al generar uno nuevo, el anterior queda invalidado.
+              Comparte este código con el personal o profesorado que quiera
+              registrarse. Al generar uno nuevo, el anterior queda invalidado.
             </p>
             <div className="flex items-center gap-3">
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-center">
@@ -502,7 +514,9 @@ export default function Usuarios() {
                     {codigoRegistro}
                   </span>
                 ) : (
-                  <span className="text-gray-400 text-sm">Sin código generado</span>
+                  <span className="text-gray-400 text-sm">
+                    Sin código generado
+                  </span>
                 )}
               </div>
             </div>

@@ -8,6 +8,7 @@ import {
   BookOpen,
   LogOut,
   Printer,
+  Search,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../context/AuthContext';
@@ -35,6 +36,7 @@ export default function MiEspacio() {
   const [sortDir, setSortDir] = useState('desc');
   const [search, setSearch] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [qrModal, setQrModal] = useState(null);
 
   // Cambio de contraseña
   const [passForm, setPassForm] = useState({
@@ -96,6 +98,7 @@ export default function MiEspacio() {
     if (search) {
       const q = search.toLowerCase();
       if (
+        !p.codigo?.toLowerCase().includes(q) &&
         !p.libro_titulo?.toLowerCase().includes(q) &&
         !p.libro_codigo?.toLowerCase().includes(q)
       )
@@ -251,12 +254,14 @@ export default function MiEspacio() {
         <main className="flex-1 overflow-auto p-8">
           {/* ── PERFIL ── */}
           {seccion === 'perfil' && (
-            <div className="max-w-2xl space-y-6">
+            <div className="max-w-5xl space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Mi perfil</h2>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
 
               {/* Datos */}
               <div className="bg-white rounded-xl shadow p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   {[
                     ['Nombre', user?.nombre],
                     ['Apellidos', user?.apellidos],
@@ -271,7 +276,7 @@ export default function MiEspacio() {
                         {label}
                       </p>
                       <p
-                        className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase' : 'capitalize'}`}
+                        className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase break-all' : 'capitalize'}`}
                       >
                         {val}
                       </p>
@@ -317,7 +322,7 @@ export default function MiEspacio() {
 
                 {/* Tarjeta visual */}
                 <div
-                  className="rounded-2xl overflow-hidden border border-slate-200 shadow-md flex"
+                  className="rounded-2xl overflow-hidden border border-slate-200 shadow-md flex font-essai"
                   style={{ maxWidth: 380 }}
                 >
                   <div className="w-10 bg-brand-600 flex items-center justify-center shrink-0">
@@ -373,6 +378,8 @@ export default function MiEspacio() {
 
                 <iframe id="iframe-tarjeta" style={{ display: 'none' }} />
               </div>
+
+              </div>{/* fin grid */}
 
               {/* Cambiar contraseña */}
               <div className="bg-white rounded-xl shadow p-6 space-y-4">
@@ -460,11 +467,9 @@ export default function MiEspacio() {
               {/* Buscador + filtros */}
               <div className="bg-white rounded-xl shadow p-4 space-y-3">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                    🔍
-                  </span>
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    placeholder="Buscar por título o código..."
+                    placeholder="Buscar por código préstamo, título o código de libro"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -530,10 +535,12 @@ export default function MiEspacio() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
                     <tr>
+                      <Th col="codigo">Cód. préstamo</Th>
                       <Th col="libro_titulo">Libro</Th>
-                      <Th col="libro_codigo">Código</Th>
+                      <Th col="libro_codigo">Cód. libro</Th>
                       <Th col="fecha_inicio">Inicio</Th>
                       <Th col="fecha_devolucion_prevista">Dev. prevista</Th>
+                      <Th col="fecha_devolucion_real">Dev. real</Th>
                       <Th col="devuelto">Estado</Th>
                     </tr>
                   </thead>
@@ -543,6 +550,16 @@ export default function MiEspacio() {
                         key={p.id}
                         className={`hover:bg-gray-50 ${vencido(p) ? 'bg-red-50' : ''}`}
                       >
+                        <td className="px-4 py-3">
+                          {p.codigo ? (
+                            <button
+                              onClick={() => setQrModal(p.codigo)}
+                              className="font-mono text-xs tracking-widest text-brand-600 hover:underline"
+                            >
+                              {p.codigo}
+                            </button>
+                          ) : '—'}
+                        </td>
                         <td className="px-4 py-3 font-medium">
                           {p.libro_titulo}
                         </td>
@@ -564,6 +581,9 @@ export default function MiEspacio() {
                           )}
                         </td>
                         <td className="px-4 py-3">
+                          {fmt(p.fecha_devolucion_real) || '—'}
+                        </td>
+                        <td className="px-4 py-3">
                           {p.devuelto ? (
                             <span className="px-2 py-0.5 bg-green-100 text-green-600 rounded-full text-xs">
                               Devuelto
@@ -583,7 +603,7 @@ export default function MiEspacio() {
                     {!sortedPrestamos.length && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={7}
                           className="px-4 py-8 text-center text-gray-400"
                         >
                           {search || filtroEstado !== 'todos'
@@ -601,6 +621,29 @@ export default function MiEspacio() {
       </div>
 
       <Footer />
+
+      {/* Modal QR préstamo */}
+      {qrModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setQrModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-xs text-gray-400 uppercase tracking-widest">Código de préstamo</p>
+            <QRCodeSVG value={qrModal} size={180} level="H" fgColor="#1e293b" />
+            <p className="font-mono text-xl font-bold tracking-widest text-brand-600">{qrModal}</p>
+            <button
+              onClick={() => setQrModal(null)}
+              className="mt-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

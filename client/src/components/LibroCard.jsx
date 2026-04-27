@@ -74,12 +74,6 @@ export default function LibroCard({ libro }) {
               {libro.estanteria}
             </p>
           )}
-          {libro.estanteria && (
-            <p>
-              <span className="font-semibold text-slate-700">Estantería: </span>
-              {libro.estanteria}
-            </p>
-          )}
         </div>
       </div>
     </Link>

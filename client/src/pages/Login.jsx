@@ -21,7 +21,9 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       if (err.response?.status === 429) {
-        setError('Demasiados intentos. Espera 15 minutos e inténtalo de nuevo.');
+        setError(
+          'Demasiados intentos. Espera 15 minutos e inténtalo de nuevo.'
+        );
       } else {
         setError('Email o contraseña incorrectos');
       }

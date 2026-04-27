@@ -10,6 +10,7 @@ import Libros from './pages/Libros';
 import Prestamos from './pages/Prestamos';
 import Usuarios from './pages/Usuarios';
 import Registro from './pages/Registro';
+import Estadisticas from './pages/Estadisticas';
 import MiEspacio from './pages/MiEspacio';
 import Catalogo from './pages/Catalogo';
 import LibroDetalle from './pages/LibroDetalle';
@@ -90,6 +91,16 @@ export default function App() {
           <PrivateRoute onlyPersonal>
             <Layout>
               <Registro />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/estadisticas"
+        element={
+          <PrivateRoute onlyPersonal>
+            <Layout>
+              <Estadisticas />
             </Layout>
           </PrivateRoute>
         }

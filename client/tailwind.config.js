@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        essai: ['Essai', 'sans-serif'],
+      },
       colors: {
         brand: {
           50:  '#fdf2f3',
