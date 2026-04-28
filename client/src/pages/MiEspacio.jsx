@@ -393,20 +393,23 @@ export default function MiEspacio() {
                       label: 'Contraseña actual',
                       show: showActual,
                       toggle: () => setShowActual((v) => !v),
+                      autocomplete: 'current-password',
                     },
                     {
                       key: 'nueva',
                       label: 'Nueva contraseña',
                       show: showNueva,
                       toggle: () => setShowNueva((v) => !v),
+                      autocomplete: 'new-password',
                     },
                     {
                       key: 'confirmar',
                       label: 'Confirmar nueva',
                       show: showNueva,
                       toggle: null,
+                      autocomplete: 'new-password',
                     },
-                  ].map(({ key, label, show, toggle }) => (
+                  ].map(({ key, label, show, toggle, autocomplete }) => (
                     <div key={key}>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
                         {label}
@@ -414,6 +417,7 @@ export default function MiEspacio() {
                       <div className="relative">
                         <input
                           type={show ? 'text' : 'password'}
+                          autoComplete={autocomplete}
                           required
                           value={passForm[key]}
                           onChange={(e) =>

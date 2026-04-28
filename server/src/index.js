@@ -5,6 +5,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const { verificarConexion } = require('./services/mailer');
+const { iniciarCron }       = require('./jobs/recordatorios');
+
 const app = express();
 
 app.use(helmet());
@@ -29,6 +32,8 @@ app.use('/api/estanterias', require('./routes/estanterias'));
 app.use('/api/estadisticas', require('./routes/estadisticas'));
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () =>
-  console.log(`Servidor corriendo en http://localhost:${PORT}`)
-);
+app.listen(PORT, async () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  await verificarConexion(); // comprueba SMTP al arrancar (no bloquea si falla)
+  iniciarCron();             // activa el cron de recordatorios diarios
+});
