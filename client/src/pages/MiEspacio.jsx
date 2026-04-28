@@ -207,7 +207,7 @@ export default function MiEspacio() {
       <header className="bg-brand-600 text-white px-6 py-4 flex items-center justify-between shrink-0">
         <div>
           <p className="text-xs text-brand-300">Biblioteca Juan de Lanuza</p>
-          <p className="font-bold">
+          <p className="font-bmedium">
             Mi espacio — {user?.nombre} {user?.apellidos}
           </p>
         </div>
@@ -258,128 +258,127 @@ export default function MiEspacio() {
               <h2 className="text-2xl font-bold text-gray-800">Mi perfil</h2>
 
               <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
-
-              {/* Datos */}
-              <div className="bg-white rounded-xl shadow p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  {[
-                    ['Nombre', user?.nombre],
-                    ['Apellidos', user?.apellidos],
-                    ['Email', user?.email],
-                    ['Rol', user?.rol],
-                    ...(user?.ubicacion
-                      ? [['Curso / Ubicación', user.ubicacion]]
-                      : []),
-                  ].map(([label, val]) => (
-                    <div key={label}>
-                      <p className="text-xs text-gray-400 uppercase mb-1">
-                        {label}
-                      </p>
-                      <p
-                        className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase break-all' : 'capitalize'}`}
-                      >
-                        {val}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <hr />
-                <div className="flex gap-6 text-sm">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-brand-600">
-                      {activos.length}
-                    </p>
-                    <p className="text-gray-500">Activos</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-600">
-                      {devueltos.length}
-                    </p>
-                    <p className="text-gray-500">Devueltos</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-red-500">
-                      {activos.filter(vencido).length}
-                    </p>
-                    <p className="text-gray-500">Vencidos</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tarjeta de usuario */}
-              <div className="bg-white rounded-xl shadow p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-600">
-                    Tarjeta de usuario
-                  </h3>
-                  <button
-                    onClick={imprimirTarjeta}
-                    className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition-colors active:scale-95"
-                  >
-                    <Printer size={14} /> Imprimir tarjeta
-                  </button>
-                </div>
-
-                {/* Tarjeta visual */}
-                <div
-                  className="rounded-2xl overflow-hidden border border-slate-200 shadow-md flex font-essai"
-                  style={{ maxWidth: 380 }}
-                >
-                  <div className="w-10 bg-brand-600 flex items-center justify-center shrink-0">
-                    <span
-                      className="text-white text-[9px] font-bold uppercase tracking-widest"
-                      style={{
-                        writingMode: 'vertical-rl',
-                        transform: 'rotate(180deg)',
-                      }}
-                    >
-                      Biblioteca Juan de Lanuza
-                    </span>
-                  </div>
-                  <div className="flex-1 p-4 flex gap-4 items-center bg-white">
-                    <div className="flex-1 space-y-0.5">
-                      <p className="text-[9px] font-bold text-brand-600 uppercase tracking-widest">
-                        Colegio Juan de Lanuza
-                      </p>
-                      <p className="text-lg font-black text-slate-800 leading-tight">
-                        {user?.nombre}
-                      </p>
-                      <p className="text-lg font-black text-slate-800 leading-tight">
-                        {user?.apellidos}
-                      </p>
-                      <p className="text-xs text-slate-500 capitalize pt-1">
-                        {user?.rol}
-                      </p>
-                      {user?.ubicacion && (
-                        <p className="text-xs text-slate-400">
-                          {user.ubicacion}
+                {/* Datos */}
+                <div className="bg-white rounded-xl shadow p-6 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    {[
+                      ['Nombre', user?.nombre],
+                      ['Apellidos', user?.apellidos],
+                      ['Email', user?.email],
+                      ['Rol', user?.rol],
+                      ...(user?.ubicacion
+                        ? [['Curso / Ubicación', user.ubicacion]]
+                        : []),
+                    ].map(([label, val]) => (
+                      <div key={label}>
+                        <p className="text-xs text-gray-400 uppercase mb-1">
+                          {label}
                         </p>
-                      )}
-                      <p className="text-[10px] text-slate-400 truncate">
-                        {user?.email}
+                        <p
+                          className={`font-medium text-gray-800 ${label === 'Email' ? 'lowercase break-all' : 'capitalize'}`}
+                        >
+                          {val}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <hr />
+                  <div className="flex gap-6 text-sm">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-brand-600">
+                        {activos.length}
                       </p>
-                      <p className="text-xs font-mono font-bold text-brand-600 pt-1">
-                        {qrValue}
-                      </p>
+                      <p className="text-gray-500">Activos</p>
                     </div>
-                    <div
-                      id="tarjeta-qr"
-                      className="shrink-0 bg-white p-2 rounded-xl border border-slate-100 shadow-sm"
-                    >
-                      <QRCodeSVG
-                        value={qrValue}
-                        size={80}
-                        level="H"
-                        fgColor="#1e293b"
-                      />
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-gray-600">
+                        {devueltos.length}
+                      </p>
+                      <p className="text-gray-500">Devueltos</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-red-500">
+                        {activos.filter(vencido).length}
+                      </p>
+                      <p className="text-gray-500">Vencidos</p>
                     </div>
                   </div>
                 </div>
 
-                <iframe id="iframe-tarjeta" style={{ display: 'none' }} />
-              </div>
+                {/* Tarjeta de usuario */}
+                <div className="bg-white rounded-xl shadow p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-600">
+                      Tarjeta de usuario
+                    </h3>
+                    <button
+                      onClick={imprimirTarjeta}
+                      className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition-colors active:scale-95"
+                    >
+                      <Printer size={14} /> Imprimir tarjeta
+                    </button>
+                  </div>
 
-              </div>{/* fin grid */}
+                  {/* Tarjeta visual */}
+                  <div
+                    className="rounded-2xl overflow-hidden border border-slate-200 shadow-md flex font-essai"
+                    style={{ maxWidth: 380 }}
+                  >
+                    <div className="w-10 bg-brand-600 flex items-center justify-center shrink-0">
+                      <span
+                        className="text-white text-[9px] font-bold uppercase tracking-widest"
+                        style={{
+                          writingMode: 'vertical-rl',
+                          transform: 'rotate(180deg)',
+                        }}
+                      >
+                        Biblioteca Juan de Lanuza
+                      </span>
+                    </div>
+                    <div className="flex-1 p-4 flex gap-4 items-center bg-white">
+                      <div className="flex-1 space-y-0.5">
+                        <p className="text-[9px] font-bold text-brand-600 uppercase tracking-widest">
+                          Colegio Juan de Lanuza
+                        </p>
+                        <p className="text-lg font-black text-slate-800 leading-tight">
+                          {user?.nombre}
+                        </p>
+                        <p className="text-lg font-black text-slate-800 leading-tight">
+                          {user?.apellidos}
+                        </p>
+                        <p className="text-xs text-slate-500 capitalize pt-1">
+                          {user?.rol}
+                        </p>
+                        {user?.ubicacion && (
+                          <p className="text-xs text-slate-400">
+                            {user.ubicacion}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {user?.email}
+                        </p>
+                        <p className="text-xs font-mono font-bold text-brand-600 pt-1">
+                          {qrValue}
+                        </p>
+                      </div>
+                      <div
+                        id="tarjeta-qr"
+                        className="shrink-0 bg-white p-2 rounded-xl border border-slate-100 shadow-sm"
+                      >
+                        <QRCodeSVG
+                          value={qrValue}
+                          size={80}
+                          level="H"
+                          fgColor="#1e293b"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <iframe id="iframe-tarjeta" style={{ display: 'none' }} />
+                </div>
+              </div>
+              {/* fin grid */}
 
               {/* Cambiar contraseña */}
               <div className="bg-white rounded-xl shadow p-6 space-y-4">
@@ -471,7 +470,10 @@ export default function MiEspacio() {
               {/* Buscador + filtros */}
               <div className="bg-white rounded-xl shadow p-4 space-y-3">
                 <div className="relative">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
                   <input
                     placeholder="Buscar por código préstamo, título o código de libro"
                     value={search}
@@ -562,7 +564,9 @@ export default function MiEspacio() {
                             >
                               {p.codigo}
                             </button>
-                          ) : '—'}
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td className="px-4 py-3 font-medium">
                           {p.libro_titulo}
@@ -636,9 +640,13 @@ export default function MiEspacio() {
             className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-xs text-gray-400 uppercase tracking-widest">Código de préstamo</p>
+            <p className="text-xs text-gray-400 uppercase tracking-widest">
+              Código de préstamo
+            </p>
             <QRCodeSVG value={qrModal} size={180} level="H" fgColor="#1e293b" />
-            <p className="font-mono text-xl font-bold tracking-widest text-brand-600">{qrModal}</p>
+            <p className="font-mono text-xl font-bold tracking-widest text-brand-600">
+              {qrModal}
+            </p>
             <button
               onClick={() => setQrModal(null)}
               className="mt-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg transition-colors"

@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 
 const nav = [
-  { to: '/dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
-  { to: '/libros',        label: 'Libros',        icon: BookOpen },
-  { to: '/prestamos',     label: 'Préstamos',     icon: Bookmark },
-  { to: '/usuarios',      label: 'Usuarios',      icon: Users },
-  { to: '/registro',      label: 'Registro',      icon: ClipboardList },
-  { to: '/estadisticas',  label: 'Estadísticas',  icon: BarChart2 },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/libros', label: 'Libros', icon: BookOpen },
+  { to: '/prestamos', label: 'Préstamos', icon: Bookmark },
+  { to: '/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/registro', label: 'Registro', icon: ClipboardList },
+  { to: '/estadisticas', label: 'Estadísticas', icon: BarChart2 },
 ];
 
 const MIN_WIDTH = 160;
@@ -103,7 +103,7 @@ export default function Sidebar() {
             <p className="text-xs text-brand-300 uppercase tracking-wider">
               Biblioteca
             </p>
-            <p className="font-bold text-lg leading-tight truncate">
+            <p className="font-medium text-lg leading-tight truncate">
               Juan de Lanuza
             </p>
           </div>
@@ -137,7 +137,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className={`border-t border-brand-600 py-3 ${collapsed ? 'flex flex-col items-center gap-2 px-2' : 'px-3 space-y-1.5'}`}>
+      <div
+        className={`border-t border-brand-600 py-3 ${collapsed ? 'flex flex-col items-center gap-2 px-2' : 'px-3 space-y-1.5'}`}
+      >
         {!collapsed && (
           <p className="text-xs text-brand-300 truncate px-2 mb-1">
             {user?.nombre} {user?.apellidos}

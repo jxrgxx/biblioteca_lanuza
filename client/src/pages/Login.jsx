@@ -161,15 +161,19 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-400">
-            ¿Sin cuenta?{' '}
-            <Link
-              to="/register"
-              className="text-brand-600 font-medium hover:underline"
-            >
-              Regístrate
-            </Link>
-          </p>
+          <div className="mt-6 space-y-2 text-center">
+            <p className="text-sm text-gray-400">
+              <Link to="/olvide-password" className="text-brand-600 font-medium hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
+            <p className="text-sm text-gray-400">
+              ¿Sin cuenta?{' '}
+              <Link to="/register" className="text-brand-600 font-medium hover:underline">
+                Regístrate
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

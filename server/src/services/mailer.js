@@ -418,4 +418,130 @@ async function enviarConfirmacionPrestamo(datos) {
   });
 }
 
-module.exports = { transporter, verificarConexion, enviarRecordatorio, enviarConfirmacionPrestamo };
+/**
+ * Email de recuperación de contraseña.
+ * No lleva QR, solo el enlace con botón bien visible.
+ */
+async function enviarResetPassword({ email, nombre, link }) {
+  const html = `<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Recuperación de contraseña</title>
+  <style>
+    :root { color-scheme: light only; }
+    body  { margin:0; padding:0; background:#f4f4f5 !important;
+            font-family:Arial,sans-serif; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0"
+         style="background:#f4f4f5;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0"
+               style="background:#ffffff;border-radius:12px;overflow:hidden;
+                      box-shadow:0 2px 8px rgba(0,0,0,.10);">
+
+          <!-- Cabecera -->
+          <tr>
+            <td bgcolor="${BRAND[600]}"
+                style="background-color:${BRAND[600]} !important;padding:24px 32px;">
+              <p style="margin:0;color:#ffffff !important;font-size:20px;
+                        font-weight:bold;letter-spacing:-.02em;">
+                Biblioteca Juan de Lanuza
+              </p>
+              <p style="margin:6px 0 0;color:#f9e0e2 !important;font-size:13px;">
+                Recuperación de contraseña
+              </p>
+            </td>
+          </tr>
+
+          <!-- Cuerpo -->
+          <tr>
+            <td bgcolor="#ffffff"
+                style="background-color:#ffffff !important;padding:32px 32px 24px;">
+              <p style="margin:0 0 8px;font-size:15px;color:#374151;">
+                Hola, <strong>${nombre}</strong>
+              </p>
+              <p style="margin:0 0 28px;font-size:14px;color:#6b7280;line-height:1.6;">
+                Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.
+                Pulsa el botón para crear una nueva contraseña.
+                El enlace es válido durante <strong>1 hora</strong>.
+              </p>
+
+              <!-- Botón -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+                <tr>
+                  <td bgcolor="${BRAND[600]}"
+                      style="background-color:${BRAND[600]} !important;
+                             border-radius:8px;padding:0;">
+                    <a href="${link}"
+                       style="display:inline-block;padding:14px 32px;
+                              color:#ffffff !important;font-size:15px;
+                              font-weight:bold;text-decoration:none;
+                              letter-spacing:.01em;">
+                      Restablecer contraseña
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Enlace de texto por si el botón no funciona -->
+              <p style="margin:0 0 8px;font-size:12px;color:#94a3b8;text-align:center;">
+                Si el botón no funciona, copia este enlace en tu navegador:
+              </p>
+              <p style="margin:0 0 28px;font-size:11px;color:#94a3b8;
+                        text-align:center;word-break:break-all;">
+                ${link}
+              </p>
+
+              <!-- Aviso de seguridad -->
+              <table width="100%" cellpadding="0" cellspacing="0"
+                     style="background:#fdf2f3;border:1px solid #f9e0e2;
+                            border-radius:8px;">
+                <tr>
+                  <td style="padding:12px 16px;">
+                    <p style="margin:0;font-size:12px;color:${BRAND[700]};line-height:1.5;">
+                      <strong>¿No has solicitado esto?</strong><br/>
+                      Ignora este correo. Tu contraseña no cambiará.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td bgcolor="#fdf2f3"
+                style="background-color:#fdf2f3 !important;border-top:2px solid #f9e0e2;
+                       padding:14px 32px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:${BRAND[700]};font-weight:bold;">
+                Biblioteca · Colegio Juan de Lanuza
+              </p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;">
+                Este mensaje es automático, no respondas a este correo.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  await transporter.sendMail({
+    from: `"Biblioteca Juan de Lanuza" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'biblioteca@juandelanuza.org'}>`,
+    to: email,
+    subject: 'Restablece tu contraseña — Biblioteca Juan de Lanuza',
+    html,
+  });
+}
+
+module.exports = { transporter, verificarConexion, enviarRecordatorio, enviarConfirmacionPrestamo, enviarResetPassword };

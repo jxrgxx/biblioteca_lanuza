@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-const ROLES_GESTION = ["admin", "biblioteca"];
+const ROLES_GESTION = ['admin', 'biblioteca'];
 export const esGestion = (rol) => ROLES_GESTION.includes(rol);
 
 export default function PrivateRoute({ children, onlyPersonal = false }) {

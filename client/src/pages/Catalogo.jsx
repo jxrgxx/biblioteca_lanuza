@@ -107,7 +107,7 @@ export default function Catalogo() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* CABECERA */}
-      <header className="bg-brand-600 text-white shadow-md">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -116,21 +116,25 @@ export default function Catalogo() {
               className="h-10 object-contain"
             />
             <div>
-              <p className="font-medium text-lg leading-tight">Biblioteca</p>
-              <p className="text-brand-300 text-xs">Juan de Lanuza</p>
+              <p className="text-xl font-medium text-brand-600 uppercase tracking-tighter leading-none">
+                Biblioteca
+              </p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+                Juan de Lanuza
+              </p>
             </div>
           </div>
           {user ? (
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium leading-tight">
+                <p className="text-sm font-medium text-brand-600 leading-tight">
                   {user.nombre} {user.apellidos}
                 </p>
-                <p className="text-brand-300 text-xs capitalize">{user.rol}</p>
+                <p className="text-gray-400 text-xs capitalize">{user.rol}</p>
               </div>
               <Link
                 to={esGestion(user.rol) ? '/dashboard' : '/mi-espacio'}
-                className="bg-white text-brand-700 font-medium text-sm px-6 py-2 rounded-lg hover:bg-brand-50 transition-colors"
+                className="bg-brand-600 text-white font-medium text-sm px-6 py-2 rounded-lg hover:bg-brand-700 transition-colors"
               >
                 {esGestion(user.rol) ? 'Gestión' : 'Mi espacio'}
               </Link>
@@ -138,7 +142,7 @@ export default function Catalogo() {
           ) : (
             <Link
               to="/login"
-              className="bg-white text-brand-700 font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-50 transition-colors"
+              className="bg-brand-600 text-white font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-700 transition-colors"
             >
               Acceder
             </Link>

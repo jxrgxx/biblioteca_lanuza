@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import OlvidePassword from './pages/OlvidePassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Libros from './pages/Libros';
 import Prestamos from './pages/Prestamos';
@@ -44,6 +46,8 @@ export default function App() {
         path="/register"
         element={!user ? <Register /> : <Navigate to="/" />}
       />
+      <Route path="/olvide-password" element={<OlvidePassword />} />
+      <Route path="/reset-password"  element={<ResetPassword />} />
 
       <Route
         path="/dashboard"

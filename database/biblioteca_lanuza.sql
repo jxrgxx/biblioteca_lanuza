@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 28-04-2026 a las 11:51:27
+-- Tiempo de generación: 28-04-2026 a las 16:43:50
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -89,6 +89,28 @@ INSERT INTO `libro` (`id`, `codigo`, `titulo`, `autor`, `editorial`, `volumen`, 
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `password_reset`
+--
+
+CREATE TABLE `password_reset` (
+  `id` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `usado` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `password_reset`
+--
+
+INSERT INTO `password_reset` (`id`, `id_usuario`, `token`, `expires_at`, `usado`, `created_at`) VALUES
+(1, 10, 'c1cec9ebc76f8569ac730991c1e32a0e72ed3c5feefee6ffc59ecc23bd290cf5', '2026-04-28 16:01:36', 1, '2026-04-28 13:01:36');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `prestamo`
 --
 
@@ -102,6 +124,16 @@ CREATE TABLE `prestamo` (
   `fecha_devolucion_real` date DEFAULT NULL,
   `devuelto` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `prestamo`
+--
+
+INSERT INTO `prestamo` (`id`, `codigo`, `id_usuario`, `id_libro`, `fecha_inicio`, `fecha_devolucion_prevista`, `fecha_devolucion_real`, `devuelto`) VALUES
+(12, '9XTWXS', 10, 1, '2026-04-28', '2026-04-29', '2026-04-28', 1),
+(13, 'HTWDUG', 1, 1, '2026-04-28', '2026-04-30', '2026-04-28', 1),
+(14, 'M2EDFY', 10, 1, '2026-04-28', '2026-04-30', '2026-04-28', 1),
+(15, 'L74YNB', 10, 1, '2026-04-28', '2026-05-01', '2026-04-28', 1);
 
 -- --------------------------------------------------------
 
@@ -142,7 +174,7 @@ INSERT INTO `usuario` (`id`, `codigo`, `nombre`, `apellidos`, `email`, `password
 (1, 'U_0001', 'Biblioteca', 'Juan de Lanuza', 'biblioteca@juandelanuza.org', '$2a$10$1y6zBd.ELhFBL5madTGpvuheV5PDdPJeo4EHbQJSF/YAVn7NosK1G', 'biblioteca', '---'),
 (8, 'U_0008', 'alumno ', 'prueba', 'alumno.prueba@juandelanuza.org', '$2a$10$ghGuV90zM8Z45WNZ4I0W9uyGBZiK724ARcDyvrpriyQ4vC4tPzzCa', 'alumno', '3º ESO'),
 (9, 'U_0009', 'Alumno', 'Prueba2', 'prueba2@juandelanuza.org', '$2a$10$OnTKkyQi/uFgYBAf1WrjRu.8Na43dxSgrCJyX3NdstBMaEYAZtOuG', 'alumno', '4º ESO'),
-(10, 'U_0010', 'Jorge Lei', 'León Pérez', 'practicasinfor@juandelanuza.org', '$2a$10$lqKFMfv21Zlt9Cg5/ZnlVutTev1SRkOlCqdDgf9vblinNQYy9HcNi', 'personal', NULL);
+(10, 'U_0010', 'Jorge Lei', 'León Pérez', 'practicasinfor@juandelanuza.org', '$2a$10$bRiY7rDaemlDX0sj4T72ROZ0e0lJCTCoSWeT8uij5Gy9uukP0XaCC', 'personal', NULL);
 
 --
 -- Índices para tablas volcadas
@@ -167,6 +199,13 @@ ALTER TABLE `estanteria`
 ALTER TABLE `libro`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo` (`codigo`);
+
+--
+-- Indices de la tabla `password_reset`
+--
+ALTER TABLE `password_reset`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token` (`token`);
 
 --
 -- Indices de la tabla `prestamo`
@@ -208,10 +247,16 @@ ALTER TABLE `libro`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT de la tabla `password_reset`
+--
+ALTER TABLE `password_reset`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT de la tabla `prestamo`
 --
 ALTER TABLE `prestamo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT de la tabla `registro`

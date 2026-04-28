@@ -134,26 +134,26 @@ export default function LibroDetalle() {
   return (
     <div className="bg-slate-50 min-h-screen flex flex-col">
       {/* NAVBAR */}
-      <nav className="bg-brand-600 border-b border-slate-200 px-8 py-4 sticky top-0 z-50 shadow-sm">
+      <nav className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <img
-              src="/arbol_logo_transparente.png"
+              src="/arbol_logo_transparente_bordes.png"
               alt="Logo"
               className="h-10 object-contain"
             />
             <div>
-              <h1 className="text-xl font-medium text-white uppercase tracking-tighter leading-none">
+              <h1 className="text-xl font-medium text-brand-600 uppercase tracking-tighter leading-none">
                 Biblioteca
               </h1>
-              <p className="text-[10px] text-brand-300 uppercase tracking-widest">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest">
                 Juan de Lanuza
               </p>
             </div>
           </div>
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-white hover:text-brand-600 font-medium transition-all px-4 py-2 rounded-xl hover:bg-slate-100"
+            className="flex items-center gap-2 text-gray-600 hover:text-brand-600 font-medium transition-all px-4 py-2 rounded-xl hover:bg-gray-100"
           >
             <ArrowLeft size={20} />
             <span className="hidden sm:inline">Volver al catálogo</span>
