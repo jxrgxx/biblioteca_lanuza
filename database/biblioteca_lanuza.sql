@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 27-04-2026 a las 16:13:01
+-- Tiempo de generación: 28-04-2026 a las 11:51:27
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -32,6 +32,13 @@ CREATE TABLE `config` (
   `valor` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `config`
+--
+
+INSERT INTO `config` (`clave`, `valor`) VALUES
+('codigo_registro', 'UU4LNU');
+
 -- --------------------------------------------------------
 
 --
@@ -42,6 +49,14 @@ CREATE TABLE `estanteria` (
   `id` int(10) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `estanteria`
+--
+
+INSERT INTO `estanteria` (`id`, `nombre`) VALUES
+(1, 'A1 - Comics'),
+(2, 'A1 - Mangas');
 
 -- --------------------------------------------------------
 
@@ -63,6 +78,13 @@ CREATE TABLE `libro` (
   `estado` enum('disponible','prestado','extraviado','no disponible') NOT NULL DEFAULT 'disponible',
   `nombre_foto` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `libro`
+--
+
+INSERT INTO `libro` (`id`, `codigo`, `titulo`, `autor`, `editorial`, `volumen`, `idioma`, `genero`, `estanteria`, `categoria`, `estado`, `nombre_foto`) VALUES
+(1, 'L-0001', 'Invencible', 'Robert Kirkman', 'ECC', 144, 'Español', 'Superhéroes', 'A1 - Comics', '', 'disponible', 'invencible_144_1776861664511.jpg');
 
 -- --------------------------------------------------------
 
@@ -111,6 +133,16 @@ CREATE TABLE `usuario` (
   `rol` enum('personal','profesorado','alumno','biblioteca','admin') NOT NULL,
   `ubicacion` enum('1º Primaria','2º Primaria','3º Primaria','4º Primaria','5º Primaria','6º Primaria','1º ESO','2º ESO','3º ESO','4º ESO','1º Bach','2º Bach','---') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `usuario`
+--
+
+INSERT INTO `usuario` (`id`, `codigo`, `nombre`, `apellidos`, `email`, `password`, `rol`, `ubicacion`) VALUES
+(1, 'U_0001', 'Biblioteca', 'Juan de Lanuza', 'biblioteca@juandelanuza.org', '$2a$10$1y6zBd.ELhFBL5madTGpvuheV5PDdPJeo4EHbQJSF/YAVn7NosK1G', 'biblioteca', '---'),
+(8, 'U_0008', 'alumno ', 'prueba', 'alumno.prueba@juandelanuza.org', '$2a$10$ghGuV90zM8Z45WNZ4I0W9uyGBZiK724ARcDyvrpriyQ4vC4tPzzCa', 'alumno', '3º ESO'),
+(9, 'U_0009', 'Alumno', 'Prueba2', 'prueba2@juandelanuza.org', '$2a$10$OnTKkyQi/uFgYBAf1WrjRu.8Na43dxSgrCJyX3NdstBMaEYAZtOuG', 'alumno', '4º ESO'),
+(10, 'U_0010', 'Jorge Lei', 'León Pérez', 'practicasinfor@juandelanuza.org', '$2a$10$lqKFMfv21Zlt9Cg5/ZnlVutTev1SRkOlCqdDgf9vblinNQYy9HcNi', 'personal', NULL);
 
 --
 -- Índices para tablas volcadas
@@ -167,31 +199,31 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `estanteria`
 --
 ALTER TABLE `estanteria`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `libro`
 --
 ALTER TABLE `libro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `prestamo`
 --
 ALTER TABLE `prestamo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `registro`
 --
 ALTER TABLE `registro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Restricciones para tablas volcadas
