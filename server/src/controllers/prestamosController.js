@@ -1,4 +1,5 @@
 const db = require('../db');
+const { enviarConfirmacionPrestamo } = require('../services/mailer');
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 async function generarCodigoPrestamo(conn) {
@@ -85,14 +86,42 @@ exports.create = async (req, res) => {
     ]);
     await conn.commit();
     const [rows] = await db.query(
-      `
-      SELECT p.*, u.nombre AS usuario_nombre, u.apellidos AS usuario_apellidos,
-             l.titulo AS libro_titulo, l.codigo AS libro_codigo
-      FROM prestamo p JOIN usuario u ON p.id_usuario=u.id JOIN libro l ON p.id_libro=l.id
-      WHERE p.id = ?`,
+      `SELECT p.*,
+              u.nombre AS usuario_nombre, u.apellidos AS usuario_apellidos, u.email AS usuario_email,
+              l.titulo AS libro_titulo, l.codigo AS libro_codigo, l.autor AS libro_autor
+       FROM prestamo p
+       JOIN usuario u ON p.id_usuario = u.id
+       JOIN libro   l ON p.id_libro   = l.id
+       WHERE p.id = ?`,
       [result.insertId]
     );
-    res.status(201).json(rows[0]);
+    const prestamo = rows[0];
+    res.status(201).json(prestamo);
+
+    // Fire-and-forget: el email no bloquea ni afecta la respuesta
+    const fechaInicioStr = prestamo.fecha_inicio instanceof Date
+      ? prestamo.fecha_inicio.toISOString().split('T')[0]
+      : String(prestamo.fecha_inicio).split('T')[0];
+    const fechaPrevistaStr = prestamo.fecha_devolucion_prevista
+      ? (prestamo.fecha_devolucion_prevista instanceof Date
+          ? prestamo.fecha_devolucion_prevista.toISOString().split('T')[0]
+          : String(prestamo.fecha_devolucion_prevista).split('T')[0])
+      : null;
+
+    console.log(`[préstamo] Nuevo préstamo ${prestamo.codigo} → "${prestamo.libro_titulo}" para ${prestamo.usuario_email}`);
+
+    enviarConfirmacionPrestamo({
+      email:          prestamo.usuario_email,
+      nombre:         `${prestamo.usuario_nombre} ${prestamo.usuario_apellidos}`,
+      titulo:         prestamo.libro_titulo,
+      autor:          prestamo.libro_autor,
+      codigoLibro:    prestamo.libro_codigo,
+      codigoPrestamo: prestamo.codigo,
+      fechaInicio:    fechaInicioStr,
+      fechaPrevista:  fechaPrevistaStr,
+    })
+      .then(() => console.log(`[mailer] ✓ Confirmación enviada a ${prestamo.usuario_email} (préstamo ${prestamo.codigo})`))
+      .catch(err => console.error(`[mailer] ✗ Error enviando confirmación a ${prestamo.usuario_email}:`, err.message));
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: err.message });
