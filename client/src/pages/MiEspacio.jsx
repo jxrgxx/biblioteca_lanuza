@@ -135,7 +135,7 @@ export default function MiEspacio() {
     </th>
   );
 
-  const qrValue = user?.codigo || `U_${String(user?.id).padStart(4, '0')}`;
+  const qrValue = user?.codigo || `U_${user?.id}`;
 
   const imprimirTarjeta = () => {
     const iframe = document.getElementById('iframe-tarjeta');

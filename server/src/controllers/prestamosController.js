@@ -1,7 +1,9 @@
 const db = require('../db');
-const { enviarConfirmacionPrestamo } = require('../services/mailer');
+const { enviarConfirmacionPrestamo, enviarConfirmacionLote } = require('../services/mailer');
+const { programarRecordatorio, programarRecordatorioLote, cancelarRecordatorio } = require('../jobs/recordatorios');
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
 async function generarCodigoPrestamo(conn) {
   for (let intento = 0; intento < 10; intento++) {
     let codigo = '';
@@ -10,6 +12,17 @@ async function generarCodigoPrestamo(conn) {
     if (!rows.length) return codigo;
   }
   throw new Error('No se pudo generar un código único para el préstamo');
+}
+
+async function generarCodigoLote(conn) {
+  for (let intento = 0; intento < 10; intento++) {
+    let sufijo = '';
+    for (let i = 0; i < 6; i++) sufijo += CHARS[Math.floor(Math.random() * CHARS.length)];
+    const lote = `PM-${sufijo}`;
+    const [rows] = await conn.query('SELECT id FROM prestamo WHERE codigo_lote = ? LIMIT 1', [lote]);
+    if (!rows.length) return lote;
+  }
+  throw new Error('No se pudo generar un código de lote único');
 }
 
 exports.getAll = async (req, res) => {
@@ -84,6 +97,7 @@ exports.create = async (req, res) => {
     await conn.query('UPDATE libro SET estado = "prestado" WHERE id = ?', [
       id_libro,
     ]);
+    await programarRecordatorio(conn, { id_prestamo: result.insertId, fecha_devolucion_prevista: fecha_devolucion_prevista || null });
     await conn.commit();
     const [rows] = await db.query(
       `SELECT p.*,
@@ -152,6 +166,7 @@ exports.devolver = async (req, res) => {
     await conn.query('UPDATE libro SET estado = "disponible" WHERE id = ?', [
       rows[0].id_libro,
     ]);
+    await cancelarRecordatorio(conn, { id_prestamo: parseInt(req.params.id) });
     await conn.commit();
     res.json({ message: 'Devolución registrada' });
   } catch (err) {
@@ -199,6 +214,12 @@ exports.update = async (req, res) => {
       ]);
     }
 
+    // reprogramar recordatorio si cambia la fecha o se marca/desmarca devuelto
+    await cancelarRecordatorio(conn, { id_prestamo: parseInt(req.params.id) });
+    if (!devuelto) {
+      await programarRecordatorio(conn, { id_prestamo: parseInt(req.params.id), fecha_devolucion_prevista: fecha_devolucion_prevista || null });
+    }
+
     await conn.commit();
     res.json({ message: 'Préstamo actualizado' });
   } catch (err) {
@@ -220,6 +241,7 @@ exports.remove = async (req, res) => {
       return res.status(404).json({ error: 'Préstamo no encontrado' });
     const p = rows[0];
 
+    await cancelarRecordatorio(conn, { id_prestamo: parseInt(req.params.id) });
     await conn.query('DELETE FROM prestamo WHERE id = ?', [req.params.id]);
     if (!p.devuelto) {
       await conn.query("UPDATE libro SET estado='disponible' WHERE id=?", [
@@ -228,6 +250,78 @@ exports.remove = async (req, res) => {
     }
     await conn.commit();
     res.json({ message: 'Préstamo eliminado' });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+exports.createLote = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const { codigo_usuario, ids_libros, fecha_inicio, fecha_devolucion_prevista } = req.body;
+
+    if (!codigo_usuario || !Array.isArray(ids_libros) || !ids_libros.length || !fecha_inicio) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
+
+    const [usuarios] = await conn.query(
+      "SELECT id, nombre, apellidos, email, rol FROM usuario WHERE codigo = ? AND activo = 1",
+      [codigo_usuario]
+    );
+    if (!usuarios.length) {
+      return res.status(404).json({ error: 'Usuario no encontrado o inactivo' });
+    }
+    const usuario = usuarios[0];
+    if (!['profesorado', 'personal'].includes(usuario.rol)) {
+      return res.status(403).json({ error: 'Solo profesorado o personal puede realizar préstamos múltiples' });
+    }
+
+    const codigoLote = await generarCodigoLote(conn);
+    const creados = [];
+    const noDisponibles = [];
+
+    for (const id_libro of ids_libros) {
+      const [libros] = await conn.query('SELECT id, titulo, codigo, autor, estado FROM libro WHERE id = ?', [id_libro]);
+      if (!libros.length || libros[0].estado !== 'disponible') {
+        noDisponibles.push({ id_libro, titulo: libros[0]?.titulo || '—', estado: libros[0]?.estado || 'no encontrado' });
+        continue;
+      }
+      const codigo = await generarCodigoPrestamo(conn);
+      const [result] = await conn.query(
+        'INSERT INTO prestamo (codigo, codigo_lote, id_usuario, id_libro, fecha_inicio, fecha_devolucion_prevista) VALUES (?,?,?,?,?,?)',
+        [codigo, codigoLote, usuario.id, id_libro, fecha_inicio, fecha_devolucion_prevista || null]
+      );
+      await conn.query('UPDATE libro SET estado = "prestado" WHERE id = ?', [id_libro]);
+      creados.push({ id: result.insertId, codigo, id_libro, titulo: libros[0].titulo, autor: libros[0].autor, codigoLibro: libros[0].codigo });
+    }
+
+    if (!creados.length) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'Ningún libro estaba disponible', noDisponibles });
+    }
+
+    await programarRecordatorioLote(conn, { codigo_lote: codigoLote, fecha_devolucion_prevista: fecha_devolucion_prevista || null });
+    await conn.commit();
+    console.log(`[lote] ${codigoLote} · ${creados.length} préstamos para ${usuario.email}`);
+    res.status(201).json({ lote: codigoLote, creados, noDisponibles });
+
+    const fechaInicioStr = fecha_inicio;
+    const fechaPrevistaStr = fecha_devolucion_prevista || null;
+
+    enviarConfirmacionLote({
+      email:        usuario.email,
+      nombre:       `${usuario.nombre} ${usuario.apellidos}`,
+      codigoLote,
+      libros:       creados.map(c => ({ titulo: c.titulo, autor: c.autor || '—', codigoLibro: c.codigoLibro || '—', codigoPrestamo: c.codigo })),
+      fechaInicio:  fechaInicioStr,
+      fechaPrevista: fechaPrevistaStr,
+    })
+      .then(() => console.log(`[mailer] ✓ Confirmación lote enviada a ${usuario.email} (${codigoLote})`))
+      .catch(err => console.error(`[mailer] ✗ Error confirmación lote a ${usuario.email}:`, err.message));
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: err.message });

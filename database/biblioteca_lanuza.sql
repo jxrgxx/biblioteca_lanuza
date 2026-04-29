@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 28-04-2026 a las 16:43:50
+-- Tiempo de generación: 29-04-2026 a las 12:53:12
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -32,13 +32,6 @@ CREATE TABLE `config` (
   `valor` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `config`
---
-
-INSERT INTO `config` (`clave`, `valor`) VALUES
-('codigo_registro', 'UU4LNU');
-
 -- --------------------------------------------------------
 
 --
@@ -49,14 +42,6 @@ CREATE TABLE `estanteria` (
   `id` int(10) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `estanteria`
---
-
-INSERT INTO `estanteria` (`id`, `nombre`) VALUES
-(1, 'A1 - Comics'),
-(2, 'A1 - Mangas');
 
 -- --------------------------------------------------------
 
@@ -79,13 +64,6 @@ CREATE TABLE `libro` (
   `nombre_foto` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `libro`
---
-
-INSERT INTO `libro` (`id`, `codigo`, `titulo`, `autor`, `editorial`, `volumen`, `idioma`, `genero`, `estanteria`, `categoria`, `estado`, `nombre_foto`) VALUES
-(1, 'L-0001', 'Invencible', 'Robert Kirkman', 'ECC', 144, 'Español', 'Superhéroes', 'A1 - Comics', '', 'disponible', 'invencible_144_1776861664511.jpg');
-
 -- --------------------------------------------------------
 
 --
@@ -101,13 +79,6 @@ CREATE TABLE `password_reset` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `password_reset`
---
-
-INSERT INTO `password_reset` (`id`, `id_usuario`, `token`, `expires_at`, `usado`, `created_at`) VALUES
-(1, 10, 'c1cec9ebc76f8569ac730991c1e32a0e72ed3c5feefee6ffc59ecc23bd290cf5', '2026-04-28 16:01:36', 1, '2026-04-28 13:01:36');
-
 -- --------------------------------------------------------
 
 --
@@ -117,23 +88,32 @@ INSERT INTO `password_reset` (`id`, `id_usuario`, `token`, `expires_at`, `usado`
 CREATE TABLE `prestamo` (
   `id` int(10) UNSIGNED NOT NULL,
   `codigo` varchar(6) DEFAULT NULL,
+  `codigo_lote` varchar(9) DEFAULT NULL,
   `id_usuario` int(10) UNSIGNED NOT NULL,
   `id_libro` int(10) UNSIGNED NOT NULL,
   `fecha_inicio` date NOT NULL,
   `fecha_devolucion_prevista` date DEFAULT NULL,
   `fecha_devolucion_real` date DEFAULT NULL,
-  `devuelto` tinyint(1) NOT NULL DEFAULT 0
+  `devuelto` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
 --
--- Volcado de datos para la tabla `prestamo`
+-- Estructura de tabla para la tabla `recordatorio`
 --
 
-INSERT INTO `prestamo` (`id`, `codigo`, `id_usuario`, `id_libro`, `fecha_inicio`, `fecha_devolucion_prevista`, `fecha_devolucion_real`, `devuelto`) VALUES
-(12, '9XTWXS', 10, 1, '2026-04-28', '2026-04-29', '2026-04-28', 1),
-(13, 'HTWDUG', 1, 1, '2026-04-28', '2026-04-30', '2026-04-28', 1),
-(14, 'M2EDFY', 10, 1, '2026-04-28', '2026-04-30', '2026-04-28', 1),
-(15, 'L74YNB', 10, 1, '2026-04-28', '2026-05-01', '2026-04-28', 1);
+CREATE TABLE `recordatorio` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_prestamo` int(10) UNSIGNED DEFAULT NULL,
+  `codigo_lote` varchar(9) DEFAULT NULL,
+  `enviar_en` datetime NOT NULL,
+  `enviado` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pendientes` (`enviado`, `enviar_en`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -163,18 +143,11 @@ CREATE TABLE `usuario` (
   `email` varchar(150) NOT NULL,
   `password` varchar(255) NOT NULL,
   `rol` enum('personal','profesorado','alumno','biblioteca','admin') NOT NULL,
-  `ubicacion` enum('1º Primaria','2º Primaria','3º Primaria','4º Primaria','5º Primaria','6º Primaria','1º ESO','2º ESO','3º ESO','4º ESO','1º Bach','2º Bach','---') DEFAULT NULL
+  `ubicacion` enum('1º Primaria','2º Primaria','3º Primaria','4º Primaria','5º Primaria','6º Primaria','1º ESO','2º ESO','3º ESO','4º ESO','1º Bach','2º Bach') DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `fecha_alta` date DEFAULT NULL,
+  `fecha_baja` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `usuario`
---
-
-INSERT INTO `usuario` (`id`, `codigo`, `nombre`, `apellidos`, `email`, `password`, `rol`, `ubicacion`) VALUES
-(1, 'U_0001', 'Biblioteca', 'Juan de Lanuza', 'biblioteca@juandelanuza.org', '$2a$10$1y6zBd.ELhFBL5madTGpvuheV5PDdPJeo4EHbQJSF/YAVn7NosK1G', 'biblioteca', '---'),
-(8, 'U_0008', 'alumno ', 'prueba', 'alumno.prueba@juandelanuza.org', '$2a$10$ghGuV90zM8Z45WNZ4I0W9uyGBZiK724ARcDyvrpriyQ4vC4tPzzCa', 'alumno', '3º ESO'),
-(9, 'U_0009', 'Alumno', 'Prueba2', 'prueba2@juandelanuza.org', '$2a$10$OnTKkyQi/uFgYBAf1WrjRu.8Na43dxSgrCJyX3NdstBMaEYAZtOuG', 'alumno', '4º ESO'),
-(10, 'U_0010', 'Jorge Lei', 'León Pérez', 'practicasinfor@juandelanuza.org', '$2a$10$bRiY7rDaemlDX0sj4T72ROZ0e0lJCTCoSWeT8uij5Gy9uukP0XaCC', 'personal', NULL);
 
 --
 -- Índices para tablas volcadas
@@ -213,8 +186,9 @@ ALTER TABLE `password_reset`
 ALTER TABLE `prestamo`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo` (`codigo`),
-  ADD KEY `id_usuario` (`id_usuario`),
-  ADD KEY `id_libro` (`id_libro`);
+  ADD KEY `id_libro` (`id_libro`),
+  ADD KEY `prestamo_ibfk_1` (`id_usuario`),
+  ADD KEY `codigo_lote` (`codigo_lote`);
 
 --
 -- Indices de la tabla `registro`
@@ -238,37 +212,37 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `estanteria`
 --
 ALTER TABLE `estanteria`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `libro`
 --
 ALTER TABLE `libro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `password_reset`
 --
 ALTER TABLE `password_reset`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `prestamo`
 --
 ALTER TABLE `prestamo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `registro`
 --
 ALTER TABLE `registro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- Restricciones para tablas volcadas
@@ -278,7 +252,7 @@ ALTER TABLE `usuario`
 -- Filtros para la tabla `prestamo`
 --
 ALTER TABLE `prestamo`
-  ADD CONSTRAINT `prestamo_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`),
+  ADD CONSTRAINT `prestamo_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `prestamo_ibfk_2` FOREIGN KEY (`id_libro`) REFERENCES `libro` (`id`);
 COMMIT;
 

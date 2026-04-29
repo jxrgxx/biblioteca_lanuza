@@ -325,7 +325,7 @@ export default function Registro() {
                   autoFocus
                   value={manualSearch}
                   onChange={(e) => handleManualSearch(e.target.value)}
-                  placeholder="Nombre, apellidos o código U_XXXX..."
+                  placeholder="Nombre, apellidos o código U_1..."
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 {manualSearch && (

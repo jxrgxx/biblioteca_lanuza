@@ -55,10 +55,10 @@ exports.register = async (req, res) => {
     );
     const id = result.insertId;
     await db.query(
-      "UPDATE usuario SET codigo = CONCAT('U_', LPAD(?, 4, '0')) WHERE id = ?",
+      "UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?",
       [id, id]
     );
-    const codigo = `U_${String(id).padStart(4, '0')}`;
+    const codigo = `U_${id}`;
     const token = jwt.sign(
       {
         id,

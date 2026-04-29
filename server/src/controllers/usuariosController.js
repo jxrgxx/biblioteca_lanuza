@@ -60,7 +60,7 @@ exports.create = async (req, res) => {
     );
     const newId = result.insertId;
     await db.query(
-      "UPDATE usuario SET codigo = CONCAT('U_', LPAD(?, 4, '0')) WHERE id = ?",
+      "UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?",
       [newId, newId]
     );
     const [rows] = await db.query(

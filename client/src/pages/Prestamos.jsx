@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Pencil, Trash2, Undo2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import {
+  Search,
+  Pencil,
+  Trash2,
+  Undo2,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+} from 'lucide-react';
 import api from '../services/api';
 import { fmt } from '../utils/dates';
 import Toast, { useToast } from '../components/Toast';
 
 const USR_RE = /^U_(\d+)$/i;
-const COL_RE = /^L-(\d+)$/i;
+const COL_RE = /^L_(\d+)$/i;
 
 const EMPTY_FORM = {
   qrUsuario: '',
@@ -100,6 +108,7 @@ export default function Prestamos() {
       const q = search.toLowerCase();
       const matches =
         p.codigo?.toLowerCase().includes(q) ||
+        p.codigo_lote?.toLowerCase().includes(q) ||
         p.usuario_nombre?.toLowerCase().includes(q) ||
         p.usuario_apellidos?.toLowerCase().includes(q) ||
         p.libro_titulo?.toLowerCase().includes(q);
@@ -137,12 +146,15 @@ export default function Prestamos() {
     >
       <span className="inline-flex items-center gap-1">
         {children}
-        {sortCol === col
-          ? sortDir === 'asc'
-            ? <ChevronUp size={14} className="text-brand-600" />
-            : <ChevronDown size={14} className="text-brand-600" />
-          : <ChevronsUpDown size={14} className="text-gray-300" />
-        }
+        {sortCol === col ? (
+          sortDir === 'asc' ? (
+            <ChevronUp size={14} className="text-brand-600" />
+          ) : (
+            <ChevronDown size={14} className="text-brand-600" />
+          )
+        ) : (
+          <ChevronsUpDown size={14} className="text-gray-300" />
+        )}
       </span>
     </th>
   );
@@ -161,7 +173,7 @@ export default function Prestamos() {
     clearTimeout(usrDebounce.current);
     const match = val.match(USR_RE);
     if (!match) {
-      if (val) setUsuarioError('Formato inválido. Usa U_0000');
+      if (val) setUsuarioError('Formato inválido. Usa U_1');
       return;
     }
     const id = parseInt(match[1], 10);
@@ -182,10 +194,10 @@ export default function Prestamos() {
     clearTimeout(colDebounce.current);
     const match = val.match(COL_RE);
     if (!match) {
-      if (val) setLibroError('Formato inválido. Usa L-0000');
+      if (val) setLibroError('Formato inválido. Usa L_1');
       return;
     }
-    const codigo = `L-${match[1].padStart(4, '0')}`;
+    const codigo = `L_${match[1]}`;
     colDebounce.current = setTimeout(async () => {
       try {
         const { data } = await api.get(`/libros?search=${codigo}`);
@@ -219,9 +231,9 @@ export default function Prestamos() {
     e.preventDefault();
     setError('');
     if (!usuarioPreview)
-      return setError('Introduce un código de usuario válido (U_0000)');
+      return setError('Introduce un código de usuario válido (U_1)');
     if (!libroPreview)
-      return setError('Introduce un código de libro válido (L-0000)');
+      return setError('Introduce un código de libro válido (L_1)');
     if (libroPreview.estado !== 'disponible')
       return setError(
         `El libro no está disponible (estado: ${libroPreview.estado})`
@@ -291,6 +303,139 @@ export default function Prestamos() {
     load();
   };
 
+  // Modal préstamo múltiple (lote)
+  const [modalLote, setModalLote] = useState(false);
+  const [loteUsuarioCod, setLoteUsuarioCod] = useState('');
+  const [loteUsuario, setLoteUsuario] = useState(null);
+  const [loteUsuarioError, setLoteUsuarioError] = useState('');
+  const [loteLibros, setLoteLibros] = useState([
+    { qr: '', preview: null, error: '' },
+  ]);
+  const [loteFechaInicio, setLoteFechaInicio] = useState('');
+  const [loteFechaPrevista, setLoteFechaPrevista] = useState('');
+  const [loteError, setLoteError] = useState('');
+  const [loteLoading, setLoteLoading] = useState(false);
+  const [loteResultado, setLoteResultado] = useState(null);
+  const loteUsrDebounce = useRef(null);
+  const loteColDebounces = useRef([]);
+
+  const resolveLoteUsuario = (val) => {
+    setLoteUsuario(null);
+    setLoteUsuarioError('');
+    clearTimeout(loteUsrDebounce.current);
+    const match = val.match(USR_RE);
+    if (!match) {
+      if (val) setLoteUsuarioError('Formato inválido. Usa U_1');
+      return;
+    }
+    const id = parseInt(match[1], 10);
+    loteUsrDebounce.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/usuarios/${id}`);
+        if (!['profesorado', 'personal'].includes(data.rol)) {
+          setLoteUsuarioError(
+            'Solo profesorado o personal puede realizar préstamos múltiples'
+          );
+          return;
+        }
+        setLoteUsuario(data);
+      } catch {
+        setLoteUsuarioError('Usuario no encontrado');
+      }
+    }, 250);
+  };
+
+  const resolveLoteLibro = (idx, val) => {
+    setLoteLibros((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], qr: val, preview: null, error: '' };
+      return next;
+    });
+    clearTimeout(loteColDebounces.current[idx]);
+    const match = val.match(COL_RE);
+    if (!match) {
+      if (val)
+        setLoteLibros((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], error: 'Formato inválido. Usa L_1' };
+          return next;
+        });
+      return;
+    }
+    const codigo = `L_${match[1]}`;
+    loteColDebounces.current[idx] = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/libros?search=${codigo}`);
+        const libro = data.find(
+          (l) => l.codigo.toUpperCase() === codigo.toUpperCase()
+        );
+        if (!libro) {
+          setLoteLibros((prev) => {
+            const next = [...prev];
+            next[idx] = { ...next[idx], error: 'Libro no encontrado' };
+            return next;
+          });
+        } else {
+          setLoteLibros((prev) => {
+            const next = [...prev];
+            next[idx] = { ...next[idx], preview: libro, error: '' };
+            return next;
+          });
+        }
+      } catch {
+        setLoteLibros((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], error: 'Error al buscar libro' };
+          return next;
+        });
+      }
+    }, 250);
+  };
+
+  const openModalLote = () => {
+    setLoteUsuarioCod('');
+    setLoteUsuario(null);
+    setLoteUsuarioError('');
+    setLoteLibros([{ qr: '', preview: null, error: '' }]);
+    setLoteFechaInicio(today);
+    setLoteFechaPrevista('');
+    setLoteError('');
+    setLoteLoading(false);
+    setLoteResultado(null);
+    setModalLote(true);
+  };
+
+  const handleLoteSubmit = async (e) => {
+    e.preventDefault();
+    setLoteError('');
+    if (!loteUsuario)
+      return setLoteError('Introduce un código de usuario válido');
+    const librosValidos = loteLibros.filter((l) => l.preview);
+    if (!librosValidos.length)
+      return setLoteError('Añade al menos un libro válido');
+    const noDisponibles = librosValidos.filter((l) => l.preview.estado !== 'disponible');
+    if (noDisponibles.length)
+      return setLoteError(
+        `Hay ${noDisponibles.length} libro${noDisponibles.length > 1 ? 's' : ''} no disponible${noDisponibles.length > 1 ? 's' : ''}. Elimínalos de la lista antes de continuar.`
+      );
+    setLoteLoading(true);
+    try {
+      const { data } = await api.post('/prestamos/lote', {
+        codigo_usuario: loteUsuarioCod,
+        ids_libros: librosValidos.map((l) => l.preview.id),
+        fecha_inicio: loteFechaInicio,
+        fecha_devolucion_prevista: loteFechaPrevista || undefined,
+      });
+      setLoteResultado(data);
+      load();
+    } catch (err) {
+      setLoteError(
+        err.response?.data?.error || 'Error al crear préstamo múltiple'
+      );
+      setLoteLoading(false);
+    }
+  };
+
   const { toast, showToast } = useToast();
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setE = (k, v) => setEditForm((f) => ({ ...f, [k]: v }));
@@ -299,12 +444,20 @@ export default function Prestamos() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Préstamos</h1>
-        <button
-          onClick={openModal}
-          className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          + Nuevo préstamo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={openModalLote}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            + Nuevo préstamo múltiple
+          </button>
+          <button
+            onClick={openModal}
+            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            + Nuevo préstamo individual
+          </button>
+        </div>
       </div>
 
       {/* Pills de estado */}
@@ -372,9 +525,12 @@ export default function Prestamos() {
       <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
-              placeholder="Buscar por código, nombre, apellidos o título del libro..."
+              placeholder="Buscar por código, codigo_lote, nombre, apellidos o título del libro..."
               value={searchInput}
               onChange={(e) => handleSearchInput(e.target.value)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -437,6 +593,7 @@ export default function Prestamos() {
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
               <Th col="codigo">Código</Th>
+              <Th col="codigo_lote">Lote</Th>
               <Th col="usuario_apellidos">Usuario</Th>
               <Th col="libro_titulo">Libro</Th>
               <Th col="fecha_inicio">F. Inicio</Th>
@@ -454,6 +611,9 @@ export default function Prestamos() {
               >
                 <td className="px-4 py-3 font-mono text-xs tracking-widest text-gray-500">
                   {p.codigo || '—'}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                  {p.codigo_lote || '—'}
                 </td>
                 <td className="px-4 py-3">
                   {p.usuario_nombre} {p.usuario_apellidos}
@@ -517,7 +677,7 @@ export default function Prestamos() {
             ))}
             {!pagina.length && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                   Sin préstamos
                 </td>
               </tr>
@@ -561,10 +721,10 @@ export default function Prestamos() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Código QR usuario{' '}
-                  <span className="text-gray-400">(U_0000)</span>
+                  <span className="text-gray-400">(U_1)</span>
                 </label>
                 <input
-                  placeholder="U_0017"
+                  placeholder="U_3"
                   value={form.qrUsuario}
                   onChange={(e) => {
                     const v = e.target.value.toUpperCase();
@@ -593,10 +753,10 @@ export default function Prestamos() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Código QR libro{' '}
-                  <span className="text-gray-400">(L-0000)</span>
+                  <span className="text-gray-400">(L_1)</span>
                 </label>
                 <input
-                  placeholder="L-0042"
+                  placeholder="L_42"
                   value={form.qrLibro}
                   onChange={(e) => {
                     const v = e.target.value.toUpperCase();
@@ -727,7 +887,8 @@ export default function Prestamos() {
               </div>
               {editForm.fecha_devolucion_real && (
                 <p className="text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
-                  Al guardar el préstamo se marcará como devuelto automáticamente.
+                  Al guardar el préstamo se marcará como devuelto
+                  automáticamente.
                 </p>
               )}
               {editError && <p className="text-red-500 text-sm">{editError}</p>}
@@ -750,6 +911,239 @@ export default function Prestamos() {
           </div>
         </div>
       )}
+      {/* Modal préstamo múltiple */}
+      {modalLote && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            {loteResultado ? (
+              <>
+                <h2 className="text-lg font-bold mb-1">Lote creado</h2>
+                <p className="text-sm text-gray-500 mb-4 font-mono">
+                  {loteResultado.lote}
+                </p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  {loteResultado.creados.length} préstamo
+                  {loteResultado.creados.length !== 1 && 's'} registrado
+                  {loteResultado.creados.length !== 1 && 's'}:
+                </p>
+                <ul className="space-y-1 mb-4">
+                  {loteResultado.creados.map((c) => (
+                    <li
+                      key={c.id}
+                      className="text-sm bg-green-50 border border-green-100 rounded-lg px-3 py-1.5 flex items-center gap-2"
+                    >
+                      <span className="text-green-600">✓</span>
+                      <span className="font-medium truncate">{c.titulo}</span>
+                      <span className="text-gray-400 text-xs ml-auto font-mono">
+                        {c.codigo}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {loteResultado.noDisponibles.length > 0 && (
+                  <>
+                    <p className="text-sm font-medium text-amber-700 mb-2">
+                      {loteResultado.noDisponibles.length} libro
+                      {loteResultado.noDisponibles.length !== 1 && 's'} no
+                      disponible
+                      {loteResultado.noDisponibles.length !== 1 && 's'}:
+                    </p>
+                    <ul className="space-y-1 mb-4">
+                      {loteResultado.noDisponibles.map((n, i) => (
+                        <li
+                          key={i}
+                          className="text-sm bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 flex items-center gap-2"
+                        >
+                          <span className="text-amber-600">⚠</span>
+                          <span className="truncate">{n.titulo}</span>
+                          <span className="text-gray-400 text-xs ml-auto">
+                            {n.estado}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setModalLote(false)}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm rounded-lg"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-bold mb-4">Préstamo múltiple</h2>
+                <form onSubmit={handleLoteSubmit} className="space-y-4">
+                  {/* Usuario */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Código usuario{' '}
+                      <span className="text-gray-400">
+                        (U_1 — profesorado o personal)
+                      </span>
+                    </label>
+                    <input
+                      placeholder="U_3"
+                      value={loteUsuarioCod}
+                      onChange={(e) => {
+                        const v = e.target.value.toUpperCase();
+                        setLoteUsuarioCod(v);
+                        resolveLoteUsuario(v);
+                      }}
+                      className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400' : 'border-gray-300'}`}
+                    />
+                    {loteUsuarioError && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {loteUsuarioError}
+                      </p>
+                    )}
+                    {loteUsuario && (
+                      <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                        <span className="text-green-600">✓</span>
+                        <span className="font-medium">
+                          {loteUsuario.nombre} {loteUsuario.apellidos}
+                        </span>
+                        <span className="text-gray-400 text-xs ml-auto">
+                          {loteUsuario.rol}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Libros dinámicos */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">
+                      Libros <span className="text-gray-400">(L_1)</span>
+                    </label>
+                    <div className="space-y-2">
+                      {loteLibros.map((lb, idx) => (
+                        <div key={idx}>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              placeholder={`L_${idx + 1}`}
+                              value={lb.qr}
+                              onChange={(e) =>
+                                resolveLoteLibro(
+                                  idx,
+                                  e.target.value.toUpperCase()
+                                )
+                              }
+                              className={`flex-1 border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${lb.error ? 'border-red-400' : lb.preview ? 'border-green-400' : 'border-gray-300'}`}
+                            />
+                            {loteLibros.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLoteLibros((prev) =>
+                                    prev.filter((_, i) => i !== idx)
+                                  )
+                                }
+                                className="text-red-400 hover:text-red-600 px-2 py-1 text-lg leading-none"
+                                title="Quitar libro"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                          {lb.error && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">
+                              {lb.error}
+                            </p>
+                          )}
+                          {lb.preview && (
+                            <div
+                              className={`mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border ${lb.preview.estado === 'disponible' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-300'}`}
+                            >
+                              <span
+                                className={
+                                  lb.preview.estado === 'disponible'
+                                    ? 'text-green-600'
+                                    : 'text-yellow-600'
+                                }
+                              >
+                                {lb.preview.estado === 'disponible' ? '✓' : '⚠'}
+                              </span>
+                              <span className="font-medium truncate">
+                                {lb.preview.titulo}
+                              </span>
+                              <span className="text-gray-400 text-xs ml-auto shrink-0">
+                                {lb.preview.estado}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLoteLibros((prev) => [
+                          ...prev,
+                          { qr: '', preview: null, error: '' },
+                        ])
+                      }
+                      className="mt-2 text-sm text-brand-600 hover:underline"
+                    >
+                      + Añadir libro
+                    </button>
+                  </div>
+
+                  {/* Fechas */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Fecha inicio *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={loteFechaInicio}
+                        onChange={(e) => setLoteFechaInicio(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Dev. prevista
+                      </label>
+                      <input
+                        type="date"
+                        value={loteFechaPrevista}
+                        onChange={(e) => setLoteFechaPrevista(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+                  </div>
+
+                  {loteError && (
+                    <p className="text-red-500 text-sm">{loteError}</p>
+                  )}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModalLote(false)}
+                      className="px-4 py-2 text-sm text-gray-600"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loteLoading}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm rounded-lg"
+                    >
+                      {loteLoading ? 'Creando…' : 'Crear lote'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} />
     </div>
   );

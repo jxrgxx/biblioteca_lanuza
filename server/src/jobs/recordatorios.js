@@ -1,104 +1,173 @@
 const cron = require('node-cron');
 const db = require('../db');
-const { enviarRecordatorio } = require('../services/mailer');
+const {
+  enviarRecordatorio,
+  enviarRecordatorioLote,
+} = require('../services/mailer');
 
 /**
- * Consulta los préstamos activos cuya fecha de devolución prevista
- * es exactamente mañana y el libro aún no ha sido devuelto.
+ * Programa un recordatorio 24h antes de la devolución.
+ * Si ese momento ya pasó, lo programa para dentro de 5 minutos.
+ * Usa conn para ir dentro de la transacción del préstamo.
  */
-async function obtenerPrestamosManana() {
-  const [rows] = await db.query(`
-    SELECT
-      p.id,
-      p.codigo          AS codigoPrestamo,
-      p.fecha_devolucion_prevista AS fechaPrevista,
-      u.nombre,
-      u.apellidos,
-      u.email,
-      l.titulo,
-      l.autor,
-      l.codigo          AS codigoLibro
-    FROM prestamo p
-    JOIN usuario u ON p.id_usuario = u.id
-    JOIN libro   l ON p.id_libro   = l.id
-    WHERE p.devuelto = 0
-      AND DATE(p.fecha_devolucion_prevista) = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-  `);
-  return rows;
+async function programarRecordatorio(
+  conn,
+  { id_prestamo, fecha_devolucion_prevista }
+) {
+  if (!fecha_devolucion_prevista) return;
+  await conn.query(
+    `
+    INSERT INTO recordatorio (id_prestamo, enviar_en)
+    VALUES (?, GREATEST(
+      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), TIME(NOW())),
+      TIMESTAMP(CURDATE(), '20:00:00')
+    ))
+  `,
+    [id_prestamo, fecha_devolucion_prevista]
+  );
 }
 
-/**
- * Tarea principal: busca préstamos y manda correos.
- * Diseñada para no lanzar excepciones (el cron debe seguir vivo aunque falle).
- */
-async function ejecutarRecordatorios() {
-  console.log('[recordatorios] Buscando préstamos que vencen mañana…');
+async function programarRecordatorioLote(
+  conn,
+  { codigo_lote, fecha_devolucion_prevista }
+) {
+  if (!fecha_devolucion_prevista) return;
+  await conn.query(
+    `
+    INSERT INTO recordatorio (codigo_lote, enviar_en)
+    VALUES (?, GREATEST(
+      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), TIME(NOW())),
+      TIMESTAMP(CURDATE(), '20:00:00')
+    ))
+  `,
+    [codigo_lote, fecha_devolucion_prevista]
+  );
+}
 
-  let prestamos;
-  try {
-    prestamos = await obtenerPrestamosManana();
-  } catch (err) {
-    console.error('[recordatorios] Error al consultar la BD:', err.message);
-    return;
+async function cancelarRecordatorio(conn, { id_prestamo, codigo_lote }) {
+  if (id_prestamo) {
+    await conn.query(
+      'DELETE FROM recordatorio WHERE id_prestamo = ? AND enviado = 0',
+      [id_prestamo]
+    );
+  } else if (codigo_lote) {
+    await conn.query(
+      'DELETE FROM recordatorio WHERE codigo_lote = ? AND enviado = 0',
+      [codigo_lote]
+    );
   }
+}
 
-  if (!prestamos.length) {
-    console.log(
-      '[recordatorios] Ningún préstamo vence mañana. Nada que enviar.'
+async function procesarPendientes() {
+  let pendientes;
+  try {
+    [pendientes] = await db.query(
+      'SELECT * FROM recordatorio WHERE enviado = 0 AND enviar_en <= NOW()'
+    );
+  } catch (err) {
+    console.error(
+      '[recordatorios] Error al consultar pendientes:',
+      err.message
     );
     return;
   }
 
-  console.log(`[recordatorios] ${prestamos.length} recordatorio(s) a enviar.`);
+  if (!pendientes.length) return;
+  console.log(
+    `[recordatorios] ${pendientes.length} recordatorio(s) pendiente(s).`
+  );
 
-  let enviados = 0;
-  let fallidos = 0;
-
-  for (const p of prestamos) {
+  for (const r of pendientes) {
     try {
-      await enviarRecordatorio({
-        email: p.email,
-        nombre: `${p.nombre} ${p.apellidos}`,
-        titulo: p.titulo,
-        autor: p.autor,
-        codigoLibro: p.codigoLibro,
-        codigoPrestamo: p.codigoPrestamo,
-        fechaPrevista:
-          p.fechaPrevista instanceof Date
-            ? p.fechaPrevista.toISOString().split('T')[0]
-            : String(p.fechaPrevista).split('T')[0],
-      });
-      console.log(
-        `[recordatorios] ✓ Enviado a ${p.email} (préstamo ${p.codigoPrestamo})`
-      );
-      enviados++;
+      if (r.id_prestamo) {
+        const [[p]] = await db.query(
+          `
+          SELECT p.codigo AS codigoPrestamo, p.fecha_devolucion_prevista AS fechaPrevista,
+                 u.nombre, u.apellidos, u.email,
+                 l.titulo, l.autor, l.codigo AS codigoLibro
+          FROM prestamo p
+          JOIN usuario u ON p.id_usuario = u.id
+          JOIN libro   l ON p.id_libro   = l.id
+          WHERE p.id = ? AND p.devuelto = 0
+        `,
+          [r.id_prestamo]
+        );
+
+        if (p) {
+          await enviarRecordatorio({
+            email: p.email,
+            nombre: `${p.nombre} ${p.apellidos}`,
+            titulo: p.titulo,
+            autor: p.autor,
+            codigoLibro: p.codigoLibro,
+            codigoPrestamo: p.codigoPrestamo,
+            fechaPrevista:
+              p.fechaPrevista instanceof Date
+                ? p.fechaPrevista.toISOString().split('T')[0]
+                : String(p.fechaPrevista).split('T')[0],
+          });
+          console.log(
+            `[recordatorios] ✓ Individual → ${p.email} (${p.codigoPrestamo})`
+          );
+        }
+      } else if (r.codigo_lote) {
+        const [filas] = await db.query(
+          `
+          SELECT p.codigo AS codigoPrestamo, p.fecha_devolucion_prevista AS fechaPrevista,
+                 u.nombre, u.apellidos, u.email,
+                 l.titulo, l.autor, l.codigo AS codigoLibro
+          FROM prestamo p
+          JOIN usuario u ON p.id_usuario = u.id
+          JOIN libro   l ON p.id_libro   = l.id
+          WHERE p.codigo_lote = ? AND p.devuelto = 0
+        `,
+          [r.codigo_lote]
+        );
+
+        if (filas.length) {
+          const { nombre, apellidos, email, fechaPrevista } = filas[0];
+          await enviarRecordatorioLote({
+            email,
+            nombre: `${nombre} ${apellidos}`,
+            codigoLote: r.codigo_lote,
+            libros: filas.map((f) => ({
+              titulo: f.titulo,
+              autor: f.autor,
+              codigoLibro: f.codigoLibro,
+              codigoPrestamo: f.codigoPrestamo,
+            })),
+            fechaPrevista:
+              fechaPrevista instanceof Date
+                ? fechaPrevista.toISOString().split('T')[0]
+                : String(fechaPrevista).split('T')[0],
+          });
+          console.log(`[recordatorios] ✓ Lote → ${email} (${r.codigo_lote})`);
+        }
+      }
+
+      await db.query('UPDATE recordatorio SET enviado = 1 WHERE id = ?', [
+        r.id,
+      ]);
     } catch (err) {
       console.error(
-        `[recordatorios] ✗ Fallo al enviar a ${p.email}:`,
+        `[recordatorios] ✗ Error en recordatorio id=${r.id}:`,
         err.message
       );
-      fallidos++;
     }
   }
-
-  console.log(
-    `[recordatorios] Resumen: ${enviados} enviados, ${fallidos} fallidos.`
-  );
 }
 
 function iniciarCron() {
-  const expresion = process.env.CRON_RECORDATORIOS || '0 8 * * *';
-
-  if (!cron.validate(expresion)) {
-    console.error('[recordatorios] Expresión cron inválida:', expresion);
-    return;
-  }
-
-  cron.schedule(expresion, ejecutarRecordatorios, {
+  cron.schedule('*/5 * * * *', procesarPendientes, {
     timezone: 'Europe/Madrid',
   });
-
-  console.log(`[recordatorios] Cron activo → "${expresion}" (Europe/Madrid)`);
+  console.log('[recordatorios] Cron activo → cada 5 minutos');
 }
 
-module.exports = { iniciarCron, ejecutarRecordatorios };
+module.exports = {
+  iniciarCron,
+  procesarPendientes,
+  programarRecordatorio,
+  programarRecordatorioLote,
+  cancelarRecordatorio,
+};
