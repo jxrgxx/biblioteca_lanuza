@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, EyeOff, Search } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Search,
+  Pencil,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  GraduationCap,
+} from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
+import { fmt } from '../utils/dates';
 
 const CURSOS = [
   '1º Primaria',
@@ -46,6 +57,13 @@ export default function Usuarios() {
   const [codigoRegistro, setCodigoRegistro] = useState('');
   const [loadingCodigo, setLoadingCodigo] = useState(false);
 
+  const [modalSubida, setModalSubida] = useState(false);
+  const [subidaLoading, setSubidaLoading] = useState(false);
+
+  const [modalEliminar, setModalEliminar] = useState(null); // { id, nombre, apellidos, prestamos }
+  const [eliminandoLoading, setEliminandoLoading] = useState(false);
+
+  const [mostrarInactivos, setMostrarInactivos] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
@@ -127,15 +145,48 @@ export default function Usuarios() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este usuario?')) return;
-    await api.delete(`/usuarios/${id}`);
-    showToast('Usuario eliminado');
-    load();
+  const abrirModalEliminar = async (u) => {
+    const { data } = await api.get(`/usuarios/${u.id}/prestamos-count`);
+    setModalEliminar({
+      id: u.id,
+      nombre: u.nombre,
+      apellidos: u.apellidos,
+      prestamos: data.total,
+    });
+  };
+
+  const handleDelete = async () => {
+    setEliminandoLoading(true);
+    try {
+      await api.delete(`/usuarios/${modalEliminar.id}`);
+      setModalEliminar(null);
+      showToast('Usuario eliminado');
+      load();
+    } finally {
+      setEliminandoLoading(false);
+    }
   };
 
   const { toast, showToast } = useToast();
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubidaDeCurso = async () => {
+    setSubidaLoading(true);
+    try {
+      const { data } = await api.post('/usuarios/subida-de-curso');
+      setModalSubida(false);
+      showToast(
+        `${data.avanzados} alumnos avanzados · ${data.graduados} graduados`
+      );
+      load();
+    } catch (err) {
+      alert(
+        err.response?.data?.error || 'Error al ejecutar la subida de curso'
+      );
+    } finally {
+      setSubidaLoading(false);
+    }
+  };
 
   const handleSearchInput = (val) => {
     setSearchInput(val);
@@ -147,6 +198,7 @@ export default function Usuarios() {
   };
 
   const filtered = usuarios.filter((u) => {
+    if (!mostrarInactivos && u.activo === 0) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -161,6 +213,8 @@ export default function Usuarios() {
     if (filtroUbicacion && u.ubicacion !== filtroUbicacion) return false;
     return true;
   });
+
+  const totalInactivos = usuarios.filter((u) => u.activo === 0).length;
 
   const sorted = [...filtered].sort((a, b) => {
     const va = a[sortCol] ?? '';
@@ -188,11 +242,17 @@ export default function Usuarios() {
       onClick={() => toggleSort(col)}
       className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
     >
-      {children}
-      <span
-        className={`ml-1 ${sortCol === col ? 'text-brand-600' : 'text-gray-300'}`}
-      >
-        {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col ? (
+          sortDir === 'asc' ? (
+            <ChevronUp size={14} className="text-brand-600" />
+          ) : (
+            <ChevronDown size={14} className="text-brand-600" />
+          )
+        ) : (
+          <ChevronsUpDown size={14} className="text-gray-300" />
+        )}
       </span>
     </th>
   );
@@ -212,6 +272,13 @@ export default function Usuarios() {
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
         <div className="flex gap-2">
           <button
+            onClick={() => setModalSubida(true)}
+            className="flex items-center gap-1.5 border border-amber-500 text-amber-600 hover:bg-amber-50 px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <GraduationCap size={16} />
+            Subida de curso
+          </button>
+          <button
             onClick={abrirModalCodigo}
             className="border border-brand-600 text-brand-600 hover:bg-brand-50 px-4 py-2 rounded-lg text-sm font-medium"
           >
@@ -230,7 +297,10 @@ export default function Usuarios() {
       <div className="bg-white rounded-xl shadow p-4 mb-4 space-y-3">
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               placeholder="Buscar por nombre, apellidos, email o código"
               value={searchInput}
@@ -280,13 +350,30 @@ export default function Usuarios() {
             ))}
           </select>
         </div>
-        <p className="text-xs text-gray-400">
-          {filtered.length}{' '}
-          {filtered.length === 1
-            ? 'usuario encontrado'
-            : 'usuarios encontrados'}
-          {hayFiltros && ' con los filtros aplicados'}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            {filtered.length}{' '}
+            {filtered.length === 1
+              ? 'usuario encontrado'
+              : 'usuarios encontrados'}
+            {hayFiltros && ' con los filtros aplicados'}
+          </p>
+          {totalInactivos > 0 && (
+            <button
+              onClick={() => setMostrarInactivos((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                mostrarInactivos
+                  ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100'
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              <GraduationCap size={13} />
+              {mostrarInactivos
+                ? `Ocultar inactivos (${totalInactivos})`
+                : `Inactivos (${totalInactivos})`}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow overflow-x-auto">
@@ -299,12 +386,18 @@ export default function Usuarios() {
               <Th col="email">Email</Th>
               <Th col="rol">Rol</Th>
               <Th col="ubicacion">Ubicación</Th>
-              <th className="px-4 py-3"></th>
+              <Th col="fecha_alta">Alta</Th>
+              <Th col="fecha_baja">Baja</Th>
+              <th className="px-4 py-3 text-center">Activo</th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {pagina.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
+              <tr
+                key={u.id}
+                className={`hover:bg-gray-50 ${u.activo === 0 ? 'opacity-50' : ''}`}
+              >
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
                   {u.codigo || '—'}
                 </td>
@@ -321,25 +414,57 @@ export default function Usuarios() {
                 <td className="px-4 py-3 text-gray-600">
                   {u.ubicacion || '—'}
                 </td>
-                <td className="px-4 py-3 flex gap-2">
-                  <button
-                    onClick={() => openEdit(u)}
-                    className="text-brand-600 hover:underline text-xs"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(u.id)}
-                    className="text-red-500 hover:underline text-xs"
-                  >
-                    Eliminar
-                  </button>
+                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                  {fmt(u.fecha_alta) || '—'}
+                </td>
+                <td className="px-4 py-3 text-xs whitespace-nowrap">
+                  {u.fecha_baja ? (
+                    <span className="text-red-400">{fmt(u.fecha_baja)}</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    checked={u.activo !== 0}
+                    onChange={async (e) => {
+                      await api.patch(`/usuarios/${u.id}/activo`, {
+                        activo: e.target.checked,
+                      });
+                      load();
+                    }}
+                    className="w-4 h-4 accent-brand-600 cursor-pointer"
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEdit(u)}
+                      title="Editar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
+                    >
+                      <Pencil size={12} />
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => abrirModalEliminar(u)}
+                      title="Eliminar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {!sorted.length && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td
+                  colSpan={10}
+                  className="px-4 py-8 text-center text-gray-400"
+                >
                   {hayFiltros
                     ? 'Sin resultados con los filtros aplicados'
                     : 'Sin usuarios'}
@@ -533,6 +658,123 @@ export default function Usuarios() {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal eliminar usuario */}
+      {modalEliminar && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Eliminar usuario
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {modalEliminar.nombre} {modalEliminar.apellidos}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-1.5 text-sm text-red-700">
+              <p>
+                Esta acción es <strong>irreversible</strong>. Se eliminará:
+              </p>
+              <ul className="space-y-1 mt-1">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  El usuario y su cuenta
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  {modalEliminar.prestamos === 0
+                    ? 'Sus préstamos (ninguno registrado)'
+                    : `Sus ${modalEliminar.prestamos} préstamo${modalEliminar.prestamos !== 1 ? 's' : ''} (historial incluido)`}
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                onClick={() => setModalEliminar(null)}
+                disabled={eliminandoLoading}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={eliminandoLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+              >
+                {eliminandoLoading
+                  ? 'Eliminando...'
+                  : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal subida de curso */}
+      {modalSubida && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <GraduationCap size={20} className="text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Subida de curso
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Esta acción no se puede deshacer
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm text-gray-700">
+              <p>
+                Se aplicarán los siguientes cambios a
+                <strong> todos los alumnos activos</strong>:
+              </p>
+              <ul className="space-y-1.5 mt-2 text-gray-600">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 mt-1.5" />
+                  Cada alumno sube un curso{' '}
+                  <span className="text-gray-400">
+                    (ej: 3º ESO pasa a 4º ESO)
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                  Los alumnos de 2º Bach pasan a inactivos y dejan de aparecer
+                  en la lista, pero siguen existiendo.
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                onClick={() => setModalSubida(false)}
+                disabled={subidaLoading}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubidaDeCurso}
+                disabled={subidaLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+              >
+                {subidaLoading ? 'Procesando...' : 'Confirmar subida'}
+              </button>
+            </div>
           </div>
         </div>
       )}

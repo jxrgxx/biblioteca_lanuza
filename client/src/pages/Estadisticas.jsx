@@ -24,8 +24,19 @@ const fmtMes = (ym) => {
   });
 };
 function trimestreDesde() {
-  const t = Math.floor(hoy.getMonth() / 3) * 3;
-  return `${hoy.getFullYear()}-${String(t + 1).padStart(2, '0')}-01`;
+  const m = hoy.getMonth(); // 0-based
+  // T1 escolar: sep–dic  (m >= 8)        → desde 1 sep año actual
+  // T2 escolar: ene–mar  (m <= 2)        → desde 1 ene año actual
+  // T3 escolar: abr–jun  (m >= 3 && m<=6) → desde 1 abr año actual
+  if (m >= 8) return `${hoy.getFullYear()}-09-01`;
+  if (m <= 2) return `${hoy.getFullYear()}-01-01`;
+  return `${hoy.getFullYear()}-04-01`;
+}
+function trimestreHasta() {
+  const m = hoy.getMonth();
+  if (m >= 8) return `${hoy.getFullYear()}-12-31`;
+  if (m <= 2) return `${hoy.getFullYear()}-03-31`;
+  return `${hoy.getFullYear()}-06-30`;
 }
 function cursoDesde() {
   const y = hoy.getMonth() >= 8 ? hoy.getFullYear() : hoy.getFullYear() - 1;
@@ -45,7 +56,7 @@ const RANGOS = [
   {
     label: 'Trimestre',
     desde: trimestreDesde,
-    hasta: () => hoy.toISOString().slice(0, 10),
+    hasta: trimestreHasta,
   },
   {
     label: 'Este año',
@@ -630,7 +641,7 @@ export default function Estadisticas() {
   return (
     <div className="flex gap-6 h-full">
       {/* Panel izquierdo — lista de estadísticas */}
-      <aside className="w-56 shrink-0 space-y-4">
+      <aside className="w-60 shrink-0 space-y-4">
         <h1 className="text-2xl font-bold text-gray-800">Estadísticas</h1>
         {GROUPS.map((group) => (
           <div key={group}>

@@ -104,21 +104,21 @@ Archivo: `/var/www/biblioteca_lanuza/server/.env`
 Este archivo **no está en git** y debe mantenerse manualmente en el servidor.
 
 ```
-DB_HOST=localhost
-DB_USER=biblioteca
-DB_PASSWORD=***
-DB_NAME=biblioteca_lanuza
-JWT_SECRET=***              ← mismo valor siempre, cambiarlo invalida todos los tokens activos
-PORT=3001
-CLIENT_URL=https://192.168.1.151
+DB_HOST = localhost
+DB_USER = biblioteca
+DB_PASSWORD = ***
+DB_NAME = biblioteca_lanuza
+JWT_SECRET = ***              ← mismo valor siempre, cambiarlo invalida todos los tokens activos
+PORT = 3001
+CLIENT_URL = https://192.168.1.151
 
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=biblioteca@juandelanuza.org
-SMTP_PASS=***               ← App Password de Google (16 caracteres)
-SMTP_FROM=biblioteca@juandelanuza.org
-CRON_RECORDATORIOS=0 8 * * *
+SMTP_HOST = smtp.gmail.com
+SMTP_PORT = 587
+SMTP_SECURE = false
+SMTP_USER = biblioteca@juandelanuza.org
+SMTP_PASS = ***               ← App Password de Google (16 caracteres)
+SMTP_FROM = biblioteca@juandelanuza.org
+CRON_RECORDATORIOS = 0 8 * * *
 ```
 
 ---

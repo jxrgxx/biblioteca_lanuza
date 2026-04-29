@@ -1,5 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Search } from 'lucide-react';
+import {
+  Search,
+  Pencil,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+} from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
 
@@ -158,11 +165,17 @@ export default function Libros() {
       onClick={() => toggleSort(col)}
       className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
     >
-      {children}
-      <span
-        className={`ml-1 ${sortCol === col ? 'text-brand-600' : 'text-gray-300'}`}
-      >
-        {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col ? (
+          sortDir === 'asc' ? (
+            <ChevronUp size={14} className="text-brand-600" />
+          ) : (
+            <ChevronDown size={14} className="text-brand-600" />
+          )
+        ) : (
+          <ChevronsUpDown size={14} className="text-gray-300" />
+        )}
       </span>
     </th>
   );
@@ -269,7 +282,10 @@ export default function Libros() {
         {/* Fila 1: buscador + limpiar */}
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               placeholder="Buscar por título, autor o código del libro"
               value={searchInput}
@@ -366,7 +382,7 @@ export default function Libros() {
               <Th col="genero">Género</Th>
               <Th col="estado">Estado</Th>
               <Th col="estanteria">Estantería</Th>
-              <Th>Acciones</Th>
+              <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -393,19 +409,25 @@ export default function Libros() {
                 <td className="px-4 py-3 text-gray-600">
                   {l.estanteria || '—'}
                 </td>
-                <td className="px-4 py-3 flex gap-2">
-                  <button
-                    onClick={() => openEdit(l)}
-                    className="text-brand-600 hover:underline text-xs"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(l.id)}
-                    className="text-red-500 hover:underline text-xs"
-                  >
-                    Eliminar
-                  </button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEdit(l)}
+                      title="Editar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
+                    >
+                      <Pencil size={12} />
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(l.id)}
+                      title="Eliminar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -575,7 +597,7 @@ export default function Libros() {
                   Nombre archivo foto
                 </label>
                 <input
-                  placeholder="ej: don-quijote  (se añade timestamp automáticamente)"
+                  placeholder="ej: don-quijote.jpg"
                   value={form.nombre_foto}
                   onChange={(e) => set('nombre_foto', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -656,6 +678,7 @@ export default function Libros() {
           </div>
         </div>
       )}
+
       {modalEstanterias && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">

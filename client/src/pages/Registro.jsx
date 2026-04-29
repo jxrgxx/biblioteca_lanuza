@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScanLine, UserCheck, AlertCircle, PenLine, Search } from "lucide-react";
+import { ScanLine, UserCheck, AlertCircle, PenLine, Search, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import api from "../services/api";
 
 const CURSOS = [
@@ -41,10 +41,6 @@ export default function Registro() {
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState("id");
   const [sortDir, setSortDir] = useState("desc");
-
-  // Edición inline
-  const [editId, setEditId] = useState(null);
-  const [editForm, setEditForm] = useState({ nombre: "", curso: "", fecha: "" });
 
   const load = async () => {
     const { data } = await api.get(`/registro?fecha=${fecha}`);
@@ -174,21 +170,6 @@ export default function Registro() {
     load();
   };
 
-  const startEdit = (e) => {
-    setEditId(e.id);
-    setEditForm({ nombre: e.nombre, curso: e.curso, fecha: e.fecha });
-  };
-
-  const handleEditSave = async (id) => {
-    try {
-      await api.put(`/registro/${id}`, editForm);
-      setEditId(null);
-      load();
-    } catch (err) {
-      alert(err.response?.data?.error || "Error al editar");
-    }
-  };
-
   const handleSearchInput = (val) => {
     setSearchInput(val);
     clearTimeout(debounceRef.current);
@@ -206,9 +187,14 @@ export default function Registro() {
       onClick={() => toggleSort(col)}
       className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
     >
-      {children}
-      <span className={`ml-1 ${sortCol === col ? "text-brand-600" : "text-gray-300"}`}>
-        {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col
+          ? sortDir === "asc"
+            ? <ChevronUp size={14} className="text-brand-600" />
+            : <ChevronDown size={14} className="text-brand-600" />
+          : <ChevronsUpDown size={14} className="text-gray-300" />
+        }
       </span>
     </th>
   );
@@ -472,41 +458,19 @@ export default function Registro() {
                 {pagina.map((e, i) => (
                   <tr key={e.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-400">{(page - 1) * PAGE_SIZE + i + 1}</td>
-                    {editId === e.id ? (
-                      <>
-                        <td className="px-4 py-2 font-mono text-xs text-gray-400">{e.codigo_usuario || '—'}</td>
-                        <td className="px-4 py-2">
-                          <input
-                            value={editForm.nombre}
-                            onChange={(ev) => setEditForm((f) => ({ ...f, nombre: ev.target.value }))}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <select
-                            value={editForm.curso}
-                            onChange={(ev) => setEditForm((f) => ({ ...f, curso: ev.target.value }))}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                          >
-                            {CURSOS.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-4 py-2 flex gap-2">
-                          <button onClick={() => handleEditSave(e.id)} className="text-green-600 hover:underline text-xs">Guardar</button>
-                          <button onClick={() => setEditId(null)} className="text-gray-400 hover:underline text-xs">Cancelar</button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{e.codigo_usuario || '—'}</td>
-                        <td className="px-4 py-3 font-medium">{e.nombre}</td>
-                        <td className="px-4 py-3 text-gray-600">{e.curso}</td>
-                        <td className="px-4 py-3 flex gap-3">
-                          <button onClick={() => startEdit(e)} className="text-brand-600 hover:underline text-xs">Editar</button>
-                          <button onClick={() => handleDelete(e.id)} className="text-red-400 hover:text-red-600 text-xs">Eliminar</button>
-                        </td>
-                      </>
-                    )}
+                    <td className="px-4 py-3 font-mono text-xs text-gray-400">{e.codigo_usuario || '—'}</td>
+                    <td className="px-4 py-3 font-medium">{e.nombre}</td>
+                    <td className="px-4 py-3 text-gray-600">{e.curso}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDelete(e.id)}
+                        title="Eliminar entrada"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {!pagina.length && (

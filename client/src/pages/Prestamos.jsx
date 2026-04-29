@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Pencil, Trash2, Undo2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import api from '../services/api';
 import { fmt } from '../utils/dates';
 import Toast, { useToast } from '../components/Toast';
@@ -135,11 +135,14 @@ export default function Prestamos() {
       onClick={() => toggleSort(col)}
       className="px-4 py-3 text-left cursor-pointer select-none hover:text-gray-800 whitespace-nowrap"
     >
-      {children}
-      <span
-        className={`ml-1 ${sortCol === col ? 'text-brand-600' : 'text-gray-300'}`}
-      >
-        {sortCol === col ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col
+          ? sortDir === 'asc'
+            ? <ChevronUp size={14} className="text-brand-600" />
+            : <ChevronDown size={14} className="text-brand-600" />
+          : <ChevronsUpDown size={14} className="text-gray-300" />
+        }
       </span>
     </th>
   );
@@ -255,7 +258,10 @@ export default function Prestamos() {
     e.preventDefault();
     setEditError('');
     try {
-      await api.put(`/prestamos/${editId}`, editForm);
+      await api.put(`/prestamos/${editId}`, {
+        ...editForm,
+        devuelto: !!editForm.fecha_devolucion_real,
+      });
       setEditModal(false);
       showToast('Préstamo actualizado correctamente');
       load();
@@ -477,27 +483,35 @@ export default function Prestamos() {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3 flex items-center gap-3">
-                  {!p.devuelto && (
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    {!p.devuelto && (
+                      <button
+                        onClick={() => handleDevolver(p.id)}
+                        title="Registrar devolución"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                      >
+                        <Undo2 size={12} />
+                        Devolver
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleDevolver(p.id)}
-                      className="text-green-600 hover:underline text-xs"
+                      onClick={() => openEdit(p)}
+                      title="Editar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
                     >
-                      Devolver
+                      <Pencil size={12} />
+                      Editar
                     </button>
-                  )}
-                  <button
-                    onClick={() => openEdit(p)}
-                    className="text-brand-600 hover:underline text-xs"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className="text-red-500 hover:underline text-xs"
-                  >
-                    Eliminar
-                  </button>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      title="Eliminar"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -711,18 +725,11 @@ export default function Prestamos() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="devuelto"
-                  checked={editForm.devuelto}
-                  onChange={(e) => setE('devuelto', e.target.checked)}
-                  className="accent-brand-600"
-                />
-                <label htmlFor="devuelto" className="text-sm text-gray-700">
-                  Devuelto
-                </label>
-              </div>
+              {editForm.fecha_devolucion_real && (
+                <p className="text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                  Al guardar el préstamo se marcará como devuelto automáticamente.
+                </p>
+              )}
               {editError && <p className="text-red-500 text-sm">{editError}</p>}
               <div className="flex justify-end gap-3 pt-2">
                 <button

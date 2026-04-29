@@ -30,6 +30,7 @@ const NAV = [
 export default function MiEspacio() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [perfil, setPerfil] = useState(null);
   const [prestamos, setPrestamos] = useState([]);
   const [seccion, setSeccion] = useState('perfil');
   const [sortCol, setSortCol] = useState('fecha_inicio');
@@ -51,6 +52,7 @@ export default function MiEspacio() {
 
   useEffect(() => {
     api.get('/prestamos/mis').then((r) => setPrestamos(r.data));
+    api.get('/auth/perfil').then((r) => setPerfil(r.data));
   }, []);
 
   const handleLogout = () => {
@@ -281,6 +283,18 @@ export default function MiEspacio() {
                         </p>
                       </div>
                     ))}
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase mb-1">Alta</p>
+                      <p className="font-medium text-gray-800">
+                        {perfil ? (fmt(perfil.fecha_alta) || '—') : '…'}
+                      </p>
+                    </div>
+                    {perfil?.fecha_baja && (
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase mb-1">Baja</p>
+                        <p className="font-medium text-red-500">{fmt(perfil.fecha_baja)}</p>
+                      </div>
+                    )}
                   </div>
                   <hr />
                   <div className="flex gap-6 text-sm">
