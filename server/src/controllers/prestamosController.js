@@ -79,6 +79,12 @@ exports.create = async (req, res) => {
     if (!id_usuario || !id_libro || !fecha_inicio) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
+    const [usuario] = await conn.query('SELECT activo FROM usuario WHERE id = ?', [id_usuario]);
+    if (!usuario.length)
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!usuario[0].activo)
+      return res.status(403).json({ error: 'El usuario está inactivo y no puede realizar préstamos' });
+
     const [libro] = await conn.query('SELECT estado FROM libro WHERE id = ?', [
       id_libro,
     ]);

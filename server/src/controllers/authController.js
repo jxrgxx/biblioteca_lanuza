@@ -50,7 +50,7 @@ exports.register = async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     const [result] = await db.query(
-      'INSERT INTO usuario (nombre, apellidos, email, password, rol, ubicacion) VALUES (?,?,?,?,?,?)',
+      'INSERT INTO usuario (nombre, apellidos, email, password, rol, ubicacion, fecha_alta) VALUES (?,?,?,?,?,?,CURDATE())',
       [nombre, apellidos, email, hash, rol, ubicacion || null]
     );
     const id = result.insertId;

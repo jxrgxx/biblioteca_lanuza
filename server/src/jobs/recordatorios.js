@@ -5,9 +5,18 @@ const {
   enviarRecordatorioLote,
 } = require('../services/mailer');
 
+// ─── HORA DE RECORDATORIO ───────────────────────────────────────────────────
+// Cambia esta constante para hacer pruebas sin esperar a las 17:00.
+// Ejemplos:
+//   '16:45:00'  → producción (hora real)
+//   TIME(DATE_ADD(NOW(), INTERVAL 2 MINUTE))  → en 2 minutos (prueba rápida,
+//                sustituye el string por esta expresión SQL directamente en la query)
+const HORA_RECORDATORIO = '16:45:00';
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
- * Programa un recordatorio 24h antes de la devolución.
- * Si ese momento ya pasó, lo programa para dentro de 5 minutos.
+ * Programa un recordatorio a las HORA_RECORDATORIO del día anterior a la devolución.
+ * Si la devolución es en menos de 24h, lo programa para las HORA_RECORDATORIO del mismo dia.
  * Usa conn para ir dentro de la transacción del préstamo.
  */
 async function programarRecordatorio(
@@ -15,15 +24,23 @@ async function programarRecordatorio(
   { id_prestamo, fecha_devolucion_prevista }
 ) {
   if (!fecha_devolucion_prevista) return;
+  // Si la devolución es el mismo día que se crea el préstamo, no se programa aviso
+  if (fecha_devolucion_prevista === new Date().toISOString().split('T')[0])
+    return;
   await conn.query(
     `
     INSERT INTO recordatorio (id_prestamo, enviar_en)
     VALUES (?, GREATEST(
-      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), TIME(NOW())),
-      TIMESTAMP(CURDATE(), '20:00:00')
+      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), ?),
+      TIMESTAMP(CURDATE(), ?)
     ))
   `,
-    [id_prestamo, fecha_devolucion_prevista]
+    [
+      id_prestamo,
+      fecha_devolucion_prevista,
+      HORA_RECORDATORIO,
+      HORA_RECORDATORIO,
+    ]
   );
 }
 
@@ -32,29 +49,35 @@ async function programarRecordatorioLote(
   { codigo_lote, fecha_devolucion_prevista }
 ) {
   if (!fecha_devolucion_prevista) return;
+  // Si la devolución es el mismo día que se crea el préstamo, no se programa aviso
+  if (fecha_devolucion_prevista === new Date().toISOString().split('T')[0])
+    return;
   await conn.query(
     `
     INSERT INTO recordatorio (codigo_lote, enviar_en)
     VALUES (?, GREATEST(
-      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), TIME(NOW())),
-      TIMESTAMP(CURDATE(), '20:00:00')
+      TIMESTAMP(DATE_SUB(?, INTERVAL 1 DAY), ?),
+      TIMESTAMP(CURDATE(), ?)
     ))
   `,
-    [codigo_lote, fecha_devolucion_prevista]
+    [
+      codigo_lote,
+      fecha_devolucion_prevista,
+      HORA_RECORDATORIO,
+      HORA_RECORDATORIO,
+    ]
   );
 }
 
 async function cancelarRecordatorio(conn, { id_prestamo, codigo_lote }) {
   if (id_prestamo) {
-    await conn.query(
-      'DELETE FROM recordatorio WHERE id_prestamo = ? AND enviado = 0',
-      [id_prestamo]
-    );
+    await conn.query('DELETE FROM recordatorio WHERE id_prestamo = ?', [
+      id_prestamo,
+    ]);
   } else if (codigo_lote) {
-    await conn.query(
-      'DELETE FROM recordatorio WHERE codigo_lote = ? AND enviado = 0',
-      [codigo_lote]
-    );
+    await conn.query('DELETE FROM recordatorio WHERE codigo_lote = ?', [
+      codigo_lote,
+    ]);
   }
 }
 

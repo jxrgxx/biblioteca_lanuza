@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
+import { exportarCSV, ordenarPor, COLS_LIBROS } from '../utils/csv';
 
 const ESTADOS = ['disponible', 'prestado', 'extraviado', 'no disponible'];
 
@@ -259,6 +260,18 @@ export default function Libros() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Libros</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => exportarCSV(sorted, COLS_LIBROS, 'libros_vista')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar vista
+          </button>
+          <button
+            onClick={() => exportarCSV(ordenarPor(libros, 'codigo'), COLS_LIBROS, 'libros_todos')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar todo
+          </button>
           <button
             onClick={() => {
               setModalEstanterias(true);

@@ -13,6 +13,7 @@ import {
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
 import { fmt } from '../utils/dates';
+import { exportarCSV, ordenarPor, COLS_USUARIOS } from '../utils/csv';
 
 const CURSOS = [
   '1º Primaria',
@@ -271,6 +272,18 @@ export default function Usuarios() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => exportarCSV(sorted, COLS_USUARIOS, 'usuarios_vista')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar vista
+          </button>
+          <button
+            onClick={() => exportarCSV(ordenarPor(usuarios, 'codigo'), COLS_USUARIOS, 'usuarios_todos')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar todo
+          </button>
           <button
             onClick={() => setModalSubida(true)}
             className="flex items-center gap-1.5 border border-amber-500 text-amber-600 hover:bg-amber-50 px-4 py-2 rounded-lg text-sm font-medium"

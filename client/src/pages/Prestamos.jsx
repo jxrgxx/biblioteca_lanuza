@@ -11,6 +11,7 @@ import {
 import api from '../services/api';
 import { fmt } from '../utils/dates';
 import Toast, { useToast } from '../components/Toast';
+import { exportarCSV, ordenarPor, COLS_PRESTAMOS } from '../utils/csv';
 
 const USR_RE = /^U_(\d+)$/i;
 const COL_RE = /^L_(\d+)$/i;
@@ -413,7 +414,9 @@ export default function Prestamos() {
     const librosValidos = loteLibros.filter((l) => l.preview);
     if (!librosValidos.length)
       return setLoteError('Añade al menos un libro válido');
-    const noDisponibles = librosValidos.filter((l) => l.preview.estado !== 'disponible');
+    const noDisponibles = librosValidos.filter(
+      (l) => l.preview.estado !== 'disponible'
+    );
     if (noDisponibles.length)
       return setLoteError(
         `Hay ${noDisponibles.length} libro${noDisponibles.length > 1 ? 's' : ''} no disponible${noDisponibles.length > 1 ? 's' : ''}. Elimínalos de la lista antes de continuar.`
@@ -445,6 +448,18 @@ export default function Prestamos() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Préstamos</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar vista
+          </button>
+          <button
+            onClick={() => exportarCSV(ordenarPor(prestamos, 'fecha_devolucion_prevista'), COLS_PRESTAMOS, 'prestamos_todos')}
+            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            ↓ Exportar todo
+          </button>
           <button
             onClick={openModalLote}
             className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -530,7 +545,7 @@ export default function Prestamos() {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             />
             <input
-              placeholder="Buscar por código, codigo_lote, nombre, apellidos o título del libro..."
+              placeholder="Buscar por código de prestamo, codigo de lote, nombre, apellidos o título del libro..."
               value={searchInput}
               onChange={(e) => handleSearchInput(e.target.value)}
               className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -720,8 +735,7 @@ export default function Prestamos() {
               {/* Usuario QR */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Código QR usuario{' '}
-                  <span className="text-gray-400">(U_1)</span>
+                  Código QR usuario <span className="text-gray-400">(U_1)</span>
                 </label>
                 <input
                   placeholder="U_3"
@@ -731,19 +745,22 @@ export default function Prestamos() {
                     set('qrUsuario', v);
                     resolveUsuario(v);
                   }}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${usuarioError ? 'border-red-400' : usuarioPreview ? 'border-green-400' : 'border-gray-300'}`}
                 />
                 {usuarioError && (
                   <p className="text-red-500 text-xs mt-1">{usuarioError}</p>
                 )}
                 {usuarioPreview && (
-                  <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
-                    <span className="text-green-600">✓</span>
+                  <div className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${usuarioPreview.activo ? 'bg-green-50 border-green-200' : 'bg-gray-100 border-gray-300'}`}>
+                    <span className={usuarioPreview.activo ? 'text-green-600' : 'text-gray-400'}>
+                      {usuarioPreview.activo ? '✓' : '✗'}
+                    </span>
                     <span className="font-medium">
                       {usuarioPreview.nombre} {usuarioPreview.apellidos}
                     </span>
                     <span className="text-gray-400 text-xs ml-auto">
-                      {usuarioPreview.rol}
+                      {usuarioPreview.activo ? usuarioPreview.rol : 'inactivo'}
                     </span>
                   </div>
                 )}
@@ -752,8 +769,7 @@ export default function Prestamos() {
               {/* Libro QR */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Código QR libro{' '}
-                  <span className="text-gray-400">(L_1)</span>
+                  Código QR libro <span className="text-gray-400">(L_1)</span>
                 </label>
                 <input
                   placeholder="L_42"
@@ -763,6 +779,7 @@ export default function Prestamos() {
                     set('qrLibro', v);
                     resolveLibro(v);
                   }}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${libroError ? 'border-red-400' : libroPreview ? 'border-green-400' : 'border-gray-300'}`}
                 />
                 {libroError && (
@@ -993,6 +1010,7 @@ export default function Prestamos() {
                         setLoteUsuarioCod(v);
                         resolveLoteUsuario(v);
                       }}
+                      onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                       className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400' : 'border-gray-300'}`}
                     />
                     {loteUsuarioError && (
@@ -1031,6 +1049,7 @@ export default function Prestamos() {
                                   e.target.value.toUpperCase()
                                 )
                               }
+                              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                               className={`flex-1 border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${lb.error ? 'border-red-400' : lb.preview ? 'border-green-400' : 'border-gray-300'}`}
                             />
                             {loteLibros.length > 1 && (
