@@ -1,12 +1,13 @@
 /**
  * Exporta un array de objetos a un fichero CSV con BOM UTF-8
  * (para que Excel reconozca los caracteres españoles).
+ * Abre el explorador de archivos para elegir ruta y nombre.
  *
  * @param {object[]} datos     - Array de filas
  * @param {Array<{key:string, label:string, fmt?:function}>} columnas
- * @param {string}   nombre    - Nombre del fichero (sin .csv)
+ * @param {string}   nombre    - Nombre sugerido (sin .csv)
  */
-export function exportarCSV(datos, columnas, nombre) {
+export async function exportarCSV(datos, columnas, nombre) {
   const escape = (val) => {
     if (val === null || val === undefined) return '';
     const s = String(val);
@@ -24,67 +25,100 @@ export function exportarCSV(datos, columnas, nombre) {
 
   const csv = '﻿' + [cabecera, ...filas].join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: `${nombre}.csv`,
+        types: [{ description: 'Archivo CSV', accept: { 'text/csv': ['.csv'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') throw err;
+      return; // cancelado por el usuario
+    }
+  }
+
+  // Fallback: prompt para elegir el nombre y descarga automática
+  const input = window.prompt('Nombre del archivo (sin .csv):', nombre);
+  if (input === null) return; // cancelado
+  const nombreFinal = input.trim() || nombre;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${nombre}.csv`;
+  a.download = `${nombreFinal}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-/** Ordena un array por una clave de forma ascendente (devuelve copia). */
+/** Ordena un array por una clave de forma ascendente (devuelve copia).
+ *  Para códigos L_N y U_N extrae el número y ordena numéricamente. */
 export function ordenarPor(datos, key) {
-  return [...datos].sort((a, b) =>
-    String(a[key] ?? '').localeCompare(String(b[key] ?? ''), 'es', { sensitivity: 'base' })
-  );
+  return [...datos].sort((a, b) => {
+    const va = String(a[key] ?? '');
+    const vb = String(b[key] ?? '');
+    const num = (s) => {
+      const m = s.match(/^[A-Z]_(\d+)$/i);
+      return m ? parseInt(m[1], 10) : null;
+    };
+    const na = num(va),
+      nb = num(vb);
+    if (na !== null && nb !== null) return na - nb;
+    return va.localeCompare(vb, 'es', { sensitivity: 'base' });
+  });
 }
 
 // ── Definición de columnas por tabla ────────────────────────────────────────
 
-const fmtFecha = (v) =>
-  v ? String(v).split('T')[0] : '';
+const fmtFecha = (v) => (v ? String(v).split('T')[0] : '');
 
-const fmtBool = (v) =>
-  v ? 'Sí' : 'No';
+const fmtBool = (v) => (v ? 'Sí' : 'No');
 
 export const COLS_PRESTAMOS = [
-  { key: 'codigo',                    label: 'Código préstamo' },
-  { key: 'codigo_lote',               label: 'Código lote' },
-  { key: 'usuario_nombre',            label: 'Nombre' },
-  { key: 'usuario_apellidos',         label: 'Apellidos' },
-  { key: 'usuario_rol',               label: 'Rol usuario' },
-  { key: 'libro_codigo',              label: 'Código libro' },
-  { key: 'libro_titulo',              label: 'Título' },
-  { key: 'libro_autor',               label: 'Autor' },
-  { key: 'fecha_inicio',              label: 'Fecha inicio',        fmt: fmtFecha },
-  { key: 'fecha_devolucion_prevista', label: 'F. dev. prevista',    fmt: fmtFecha },
-  { key: 'fecha_devolucion_real',     label: 'F. dev. real',        fmt: fmtFecha },
-  { key: 'devuelto',                  label: 'Devuelto',            fmt: fmtBool  },
+  { key: 'codigo', label: 'Código préstamo' },
+  { key: 'codigo_lote', label: 'Código lote' },
+  { key: 'usuario_nombre', label: 'Nombre' },
+  { key: 'usuario_apellidos', label: 'Apellidos' },
+  { key: 'usuario_rol', label: 'Rol usuario' },
+  { key: 'libro_codigo', label: 'Código libro' },
+  { key: 'libro_titulo', label: 'Título' },
+  { key: 'libro_autor', label: 'Autor' },
+  { key: 'fecha_inicio', label: 'Fecha inicio', fmt: fmtFecha },
+  {
+    key: 'fecha_devolucion_prevista',
+    label: 'F. dev. prevista',
+    fmt: fmtFecha,
+  },
+  { key: 'fecha_devolucion_real', label: 'F. dev. real', fmt: fmtFecha },
+  { key: 'devuelto', label: 'Devuelto', fmt: fmtBool },
 ];
 
 export const COLS_LIBROS = [
-  { key: 'codigo',     label: 'Código' },
-  { key: 'titulo',     label: 'Título' },
-  { key: 'autor',      label: 'Autor' },
-  { key: 'editorial',  label: 'Editorial' },
-  { key: 'volumen',    label: 'Volumen' },
-  { key: 'idioma',     label: 'Idioma' },
-  { key: 'genero',     label: 'Género' },
+  { key: 'codigo', label: 'Código' },
+  { key: 'titulo', label: 'Título' },
+  { key: 'autor', label: 'Autor' },
+  { key: 'editorial', label: 'Editorial' },
+  { key: 'volumen', label: 'Volumen' },
+  { key: 'idioma', label: 'Idioma' },
+  { key: 'genero', label: 'Género' },
   { key: 'estanteria', label: 'Estantería' },
-  { key: 'categoria',  label: 'Categoría' },
-  { key: 'estado',     label: 'Estado' },
+  { key: 'categoria', label: 'Categoría' },
+  { key: 'estado', label: 'Estado' },
 ];
 
 export const COLS_USUARIOS = [
-  { key: 'codigo',     label: 'Código' },
-  { key: 'nombre',     label: 'Nombre' },
-  { key: 'apellidos',  label: 'Apellidos' },
-  { key: 'email',      label: 'Email' },
-  { key: 'rol',        label: 'Rol' },
-  { key: 'ubicacion',  label: 'Ubicación' },
-  { key: 'activo',     label: 'Activo',      fmt: fmtBool  },
-  { key: 'fecha_alta', label: 'Fecha alta',  fmt: fmtFecha },
-  { key: 'fecha_baja', label: 'Fecha baja',  fmt: fmtFecha },
+  { key: 'codigo', label: 'Código' },
+  { key: 'nombre', label: 'Nombre' },
+  { key: 'apellidos', label: 'Apellidos' },
+  { key: 'email', label: 'Email' },
+  { key: 'rol', label: 'Rol' },
+  { key: 'ubicacion', label: 'Ubicación' },
+  { key: 'activo', label: 'Activo', fmt: fmtBool },
+  { key: 'fecha_alta', label: 'Fecha alta', fmt: fmtFecha },
+  { key: 'fecha_baja', label: 'Fecha baja', fmt: fmtFecha },
 ];

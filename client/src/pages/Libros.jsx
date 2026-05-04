@@ -151,10 +151,16 @@ export default function Libros() {
   const sorted = [...libros].sort((a, b) => {
     const va = a[sortCol] ?? '';
     const vb = b[sortCol] ?? '';
-    const cmp =
-      typeof va === 'number'
-        ? va - vb
-        : String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+    let cmp;
+    if (sortCol === 'codigo') {
+      const na = parseInt(String(va).replace(/^L_/i, ''), 10);
+      const nb = parseInt(String(vb).replace(/^L_/i, ''), 10);
+      cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+    } else if (typeof va === 'number') {
+      cmp = va - vb;
+    } else {
+      cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+    }
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -211,10 +217,8 @@ export default function Libros() {
       if (fotoFile) {
         const fd = new FormData();
         fd.append('foto', fotoFile);
-        const params = form.nombre_foto
-          ? `?nombre=${encodeURIComponent(form.nombre_foto)}`
-          : '';
-        await api.post(`/libros/${libro.id}/foto${params}`, fd);
+        const nombreBase = form.nombre_foto || form.titulo;
+        await api.post(`/libros/${libro.id}/foto?nombre=${encodeURIComponent(nombreBase)}`, fd);
       }
       setModal(false);
       showToast(
@@ -610,10 +614,11 @@ export default function Libros() {
                   Nombre archivo foto
                 </label>
                 <input
-                  placeholder="ej: don-quijote.jpg"
+                  placeholder="Sin extensión — vacío = usa el título"
                   value={form.nombre_foto}
                   onChange={(e) => set('nombre_foto', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  readOnly={!!editing && !fotoFile}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${editing && !fotoFile ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-300'}`}
                 />
               </div>
               <div>

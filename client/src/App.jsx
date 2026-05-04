@@ -38,16 +38,13 @@ export default function App() {
       <Route path="/" element={<Catalogo />} />
       <Route path="/libros/:id" element={<LibroDetalle />} />
 
-      <Route
-        path="/login"
-        element={!user ? <Login /> : <Navigate to="/" />}
-      />
+      <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
       <Route
         path="/register"
         element={!user ? <Register /> : <Navigate to="/" />}
       />
       <Route path="/olvide-password" element={<OlvidePassword />} />
-      <Route path="/reset-password"  element={<ResetPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
         path="/dashboard"
@@ -122,13 +119,7 @@ export default function App() {
         }
       />
 
-      <Route
-        path="*"
-        element={
-          <Navigate to="/"
-          />
-        }
-      />
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }

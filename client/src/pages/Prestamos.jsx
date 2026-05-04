@@ -449,13 +449,21 @@ export default function Prestamos() {
         <h1 className="text-2xl font-bold text-gray-800">Préstamos</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista')}
+            onClick={() =>
+              exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista')
+            }
             className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             ↓ Exportar vista
           </button>
           <button
-            onClick={() => exportarCSV(ordenarPor(prestamos, 'fecha_devolucion_prevista'), COLS_PRESTAMOS, 'prestamos_todos')}
+            onClick={() =>
+              exportarCSV(
+                ordenarPor(prestamos, 'fecha_devolucion_prevista'),
+                COLS_PRESTAMOS,
+                'prestamos_todos'
+              )
+            }
             className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             ↓ Exportar todo
@@ -752,8 +760,16 @@ export default function Prestamos() {
                   <p className="text-red-500 text-xs mt-1">{usuarioError}</p>
                 )}
                 {usuarioPreview && (
-                  <div className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${usuarioPreview.activo ? 'bg-green-50 border-green-200' : 'bg-gray-100 border-gray-300'}`}>
-                    <span className={usuarioPreview.activo ? 'text-green-600' : 'text-gray-400'}>
+                  <div
+                    className={`mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm border ${usuarioPreview.activo ? 'bg-green-50 border-green-200' : 'bg-gray-100 border-gray-300'}`}
+                  >
+                    <span
+                      className={
+                        usuarioPreview.activo
+                          ? 'text-green-600'
+                          : 'text-gray-400'
+                      }
+                    >
                       {usuarioPreview.activo ? '✓' : '✗'}
                     </span>
                     <span className="font-medium">
@@ -815,6 +831,7 @@ export default function Prestamos() {
                   <input
                     type="date"
                     required
+                    min={today}
                     value={form.fecha_inicio}
                     onChange={(e) => set('fecha_inicio', e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -827,6 +844,7 @@ export default function Prestamos() {
                   <input
                     type="date"
                     required
+                    min={today}
                     value={form.fecha_devolucion_prevista}
                     onChange={(e) =>
                       set('fecha_devolucion_prevista', e.target.value)
@@ -870,6 +888,7 @@ export default function Prestamos() {
                   <input
                     type="date"
                     required
+                    min={today}
                     value={editForm.fecha_inicio}
                     onChange={(e) => setE('fecha_inicio', e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -881,6 +900,7 @@ export default function Prestamos() {
                   </label>
                   <input
                     type="date"
+                    min={today}
                     value={editForm.fecha_devolucion_prevista}
                     onChange={(e) =>
                       setE('fecha_devolucion_prevista', e.target.value)
@@ -997,7 +1017,7 @@ export default function Prestamos() {
                   {/* Usuario */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Código usuario{' '}
+                      Código QR usuario{' '}
                       <span className="text-gray-400">
                         (U_1 — profesorado o personal)
                       </span>
@@ -1034,7 +1054,8 @@ export default function Prestamos() {
                   {/* Libros dinámicos */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-2">
-                      Libros <span className="text-gray-400">(L_1)</span>
+                      Código QR libros{' '}
+                      <span className="text-gray-400">(L_1)</span>
                     </label>
                     <div className="space-y-2">
                       {loteLibros.map((lb, idx) => (
@@ -1049,7 +1070,9 @@ export default function Prestamos() {
                                   e.target.value.toUpperCase()
                                 )
                               }
-                              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                              onKeyDown={(e) =>
+                                e.key === 'Enter' && e.preventDefault()
+                              }
                               className={`flex-1 border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${lb.error ? 'border-red-400' : lb.preview ? 'border-green-400' : 'border-gray-300'}`}
                             />
                             {loteLibros.length > 1 && (
@@ -1118,6 +1141,7 @@ export default function Prestamos() {
                       </label>
                       <input
                         type="date"
+                        min={today}
                         required
                         value={loteFechaInicio}
                         onChange={(e) => setLoteFechaInicio(e.target.value)}
@@ -1130,6 +1154,7 @@ export default function Prestamos() {
                       </label>
                       <input
                         type="date"
+                        min={today}
                         value={loteFechaPrevista}
                         onChange={(e) => setLoteFechaPrevista(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
