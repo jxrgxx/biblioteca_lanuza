@@ -108,11 +108,11 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { titulo, autor, editorial, volumen, idioma, genero, estanteria, estado } = req.body;
+    const { titulo, autor, editorial, volumen, idioma, genero, categoria, estanteria, estado } = req.body;
     if (!titulo)
       return res.status(400).json({ error: "El título es obligatorio" });
     const [result] = await db.query(
-      "INSERT INTO libro (titulo, autor, editorial, volumen, idioma, genero, estanteria, estado) VALUES (?,?,?,?,?,?,?,?)",
+      "INSERT INTO libro (titulo, autor, editorial, volumen, idioma, genero, categoria, estanteria, estado) VALUES (?,?,?,?,?,?,?,?,?)",
       [
         titulo,
         autor || null,
@@ -120,6 +120,7 @@ exports.create = async (req, res) => {
         volumen || null,
         idioma || null,
         genero || null,
+        categoria || null,
         estanteria || null,
         estado || "disponible",
       ],
@@ -138,9 +139,9 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { titulo, autor, editorial, volumen, idioma, genero, estanteria, estado } = req.body;
+    const { titulo, autor, editorial, volumen, idioma, genero, categoria, estanteria, estado } = req.body;
     await db.query(
-      "UPDATE libro SET titulo=?, autor=?, editorial=?, volumen=?, idioma=?, genero=?, estanteria=?, estado=? WHERE id=?",
+      "UPDATE libro SET titulo=?, autor=?, editorial=?, volumen=?, idioma=?, genero=?, categoria=?, estanteria=?, estado=? WHERE id=?",
       [
         titulo,
         autor || null,
@@ -148,6 +149,7 @@ exports.update = async (req, res) => {
         volumen || null,
         idioma || null,
         genero || null,
+        categoria || null,
         estanteria || null,
         estado,
         req.params.id,
@@ -172,6 +174,12 @@ exports.remove = async (req, res) => {
     );
     if (!rows.length)
       return res.status(404).json({ error: "Libro no encontrado" });
+    const [activos] = await db.query(
+      "SELECT id FROM prestamo WHERE id_libro = ? AND devuelto = 0 LIMIT 1",
+      [req.params.id]
+    );
+    if (activos.length)
+      return res.status(409).json({ error: "No se puede eliminar el libro porque tiene un préstamo activo" });
     if (rows[0].nombre_foto) {
       const fotoPath = path.join(
         __dirname,

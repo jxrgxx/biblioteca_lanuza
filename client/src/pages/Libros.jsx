@@ -6,6 +6,7 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
+  Download,
 } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
@@ -35,6 +36,7 @@ const EMPTY = {
   volumen: '',
   idioma: '',
   genero: '',
+  categoria: '',
   estanteria: '',
   estado: 'disponible',
   nombre_foto: '',
@@ -73,9 +75,24 @@ export default function Libros() {
   const [editoriales, setEditoriales] = useState([]);
   const [estanterias, setEstanterias] = useState([]);
 
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+  const [fotoModal, setFotoModal] = useState(null); // libro seleccionado para ver foto
+
   const [modalEstanterias, setModalEstanterias] = useState(false);
   const [nuevaEstanteria, setNuevaEstanteria] = useState('');
   const [errorEstanteria, setErrorEstanteria] = useState('');
+  const [editandoEstanteria, setEditandoEstanteria] = useState(null); // { id, nombre }
+  const [editNombreEstanteria, setEditNombreEstanteria] = useState('');
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target))
+        setExportMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const loadEstanterias = async () => {
     const { data } = await api.get('/estanterias');
@@ -156,6 +173,19 @@ export default function Libros() {
       const na = parseInt(String(va).replace(/^L_/i, ''), 10);
       const nb = parseInt(String(vb).replace(/^L_/i, ''), 10);
       cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+    } else if (sortCol === 'volumen') {
+      const sa = String(va).trim(); const sb = String(vb).trim();
+      const aVacio = sa === '' || sa === null;
+      const bVacio = sb === '' || sb === null;
+      const na = parseFloat(sa); const nb = parseFloat(sb);
+      const aNum = !aVacio && !isNaN(na);
+      const bNum = !bVacio && !isNaN(nb);
+      // orden: vacío → número → texto
+      const rango = (vacio, esNum) => vacio ? 0 : esNum ? 1 : 2;
+      const ra = rango(aVacio, aNum); const rb = rango(bVacio, bNum);
+      if (ra !== rb) cmp = ra - rb;
+      else if (aNum && bNum) cmp = na - nb;
+      else cmp = sa.localeCompare(sb, 'es', { sensitivity: 'base' });
     } else if (typeof va === 'number') {
       cmp = va - vb;
     } else {
@@ -218,7 +248,10 @@ export default function Libros() {
         const fd = new FormData();
         fd.append('foto', fotoFile);
         const nombreBase = form.nombre_foto || form.titulo;
-        await api.post(`/libros/${libro.id}/foto?nombre=${encodeURIComponent(nombreBase)}`, fd);
+        await api.post(
+          `/libros/${libro.id}/foto?nombre=${encodeURIComponent(nombreBase)}`,
+          fd
+        );
       }
       setModal(false);
       showToast(
@@ -234,9 +267,13 @@ export default function Libros() {
 
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar este libro?')) return;
-    await api.delete(`/libros/${id}`);
-    showToast('Libro eliminado');
-    load();
+    try {
+      await api.delete(`/libros/${id}`);
+      showToast('Libro eliminado');
+      load();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al eliminar el libro');
+    }
   };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -253,6 +290,20 @@ export default function Libros() {
     }
   };
 
+  const handleEditEstanteria = async (e) => {
+    e.preventDefault();
+    setErrorEstanteria('');
+    try {
+      await api.put(`/estanterias/${editandoEstanteria.id}`, { nombre: editNombreEstanteria });
+      setEditandoEstanteria(null);
+      setEditNombreEstanteria('');
+      loadEstanterias();
+      load(); // refresca libros por si cambió el nombre
+    } catch (err) {
+      setErrorEstanteria(err.response?.data?.error || 'Error al editar');
+    }
+  };
+
   const handleDeleteEstanteria = async (id) => {
     if (!confirm('¿Eliminar esta estantería?')) return;
     await api.delete(`/estanterias/${id}`);
@@ -264,18 +315,47 @@ export default function Libros() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Libros</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => exportarCSV(sorted, COLS_LIBROS, 'libros_vista')}
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ↓ Exportar vista
-          </button>
-          <button
-            onClick={() => exportarCSV(ordenarPor(libros, 'codigo'), COLS_LIBROS, 'libros_todos')}
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ↓ Exportar todo
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download size={15} />
+              Exportar
+              <ChevronDown
+                size={13}
+                className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                <button
+                  onClick={() => {
+                    exportarCSV(sorted, COLS_LIBROS, 'libros_vista');
+                    setExportMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Vista actual
+                </button>
+                <button
+                  onClick={() => {
+                    exportarCSV(
+                      ordenarPor(libros, 'codigo'),
+                      COLS_LIBROS,
+                      'libros_todos'
+                    );
+                    setExportMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Todo el listado
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => {
               setModalEstanterias(true);
@@ -397,14 +477,16 @@ export default function Libros() {
               <Th col="volumen">Volumen</Th>
               <Th col="idioma">Idioma</Th>
               <Th col="genero">Género</Th>
-              <Th col="estado">Estado</Th>
+              <Th col="categoria">Categoria</Th>
               <Th col="estanteria">Estantería</Th>
+              <Th col="estado">Estado</Th>
+
               <th className="px-4 py-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {librosPagina.map((l) => (
-              <tr key={l.id} className="hover:bg-gray-50">
+              <tr key={l.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setFotoModal(l)}>
                 <td className="px-4 py-3 font-mono text-xs">{l.codigo}</td>
                 <td className="px-4 py-3 font-medium">{l.titulo}</td>
                 <td className="px-4 py-3 text-gray-600">{l.autor || '—'}</td>
@@ -416,6 +498,12 @@ export default function Libros() {
                 </td>
                 <td className="px-4 py-3 text-gray-600">{l.idioma || '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{l.genero || '—'}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {l.categoria || '—'}
+                </td>
+                <td className="px-4 py-3 text-gray-600">
+                  {l.estanteria || '—'}
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoBadge[l.estado]}`}
@@ -423,10 +511,8 @@ export default function Libros() {
                     {l.estado}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-600">
-                  {l.estanteria || '—'}
-                </td>
-                <td className="px-4 py-3">
+
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => openEdit(l)}
@@ -495,24 +581,21 @@ export default function Libros() {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                {editing && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Código
-                    </label>
-                    <input
-                      readOnly
-                      value={editing.codigo}
-                      className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm font-mono text-gray-500 cursor-not-allowed"
-                    />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Código
+                  </label>
+                  <input
+                    readOnly
+                    placeholder="Se crea automatico"
+                    className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm font-mono text-gray-400 cursor-not-allowed"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Volumen
                   </label>
                   <input
-                    type="number"
                     value={form.volumen}
                     onChange={(e) => set('volumen', e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -574,6 +657,16 @@ export default function Libros() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Categoría
+                </label>
+                <input
+                  value={form.categoria}
+                  onChange={(e) => set('categoria', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -614,7 +707,7 @@ export default function Libros() {
                   Nombre archivo foto
                 </label>
                 <input
-                  placeholder="Sin extensión — vacío = usa el título"
+                  placeholder="Sin extensión - vacío = usa el título"
                   value={form.nombre_foto}
                   onChange={(e) => set('nombre_foto', e.target.value)}
                   readOnly={!!editing && !fotoFile}
@@ -633,7 +726,10 @@ export default function Libros() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => setFotoFile(e.target.files[0])}
+                      onChange={(e) => {
+                        setFotoFile(e.target.files[0]);
+                        set('nombre_foto', '');
+                      }}
                     />
                   </label>
                   <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
@@ -643,7 +739,10 @@ export default function Libros() {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={(e) => setFotoFile(e.target.files[0])}
+                      onChange={(e) => {
+                        setFotoFile(e.target.files[0]);
+                        set('nombre_foto', '');
+                      }}
                     />
                   </label>
                 </div>
@@ -712,19 +811,37 @@ export default function Libros() {
                 </p>
               )}
               {estanterias.map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50"
-                >
-                  <span className="text-sm font-medium text-gray-700">
-                    {e.nombre}
-                  </span>
-                  <button
-                    onClick={() => handleDeleteEstanteria(e.id)}
-                    className="text-red-400 hover:text-red-600 text-xs"
-                  >
-                    Eliminar
-                  </button>
+                <div key={e.id} className="rounded-lg hover:bg-gray-50">
+                  {editandoEstanteria?.id === e.id ? (
+                    <form onSubmit={handleEditEstanteria} className="flex items-center gap-2 px-3 py-1.5">
+                      <input
+                        autoFocus
+                        value={editNombreEstanteria}
+                        onChange={(ev) => setEditNombreEstanteria(ev.target.value)}
+                        className="flex-1 border border-brand-400 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
+                      <button type="submit" className="text-brand-600 hover:text-brand-800 text-xs font-medium">Guardar</button>
+                      <button type="button" onClick={() => { setEditandoEstanteria(null); setErrorEstanteria(''); }} className="text-gray-400 hover:text-gray-600 text-xs">Cancelar</button>
+                    </form>
+                  ) : (
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm font-medium text-gray-700">{e.nombre}</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => { setEditandoEstanteria(e); setEditNombreEstanteria(e.nombre); setErrorEstanteria(''); }}
+                          className="text-brand-500 hover:text-brand-700 text-xs"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEstanteria(e.id)}
+                          className="text-red-400 hover:text-red-600 text-xs"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -757,6 +874,30 @@ export default function Libros() {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox foto */}
+      {fotoModal && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setFotoModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={fotoModal.nombre_foto ? `/uploads/${fotoModal.nombre_foto}` : '/portada-default.png'}
+              alt={fotoModal.titulo}
+              className="w-full object-contain max-h-[70vh]"
+              onError={(e) => { e.target.src = '/portada-default.png'; }}
+            />
+            <div className="px-4 py-3 border-t border-gray-100">
+              <p className="font-semibold text-gray-800 text-sm truncate">{fotoModal.titulo}</p>
+              {fotoModal.autor && <p className="text-xs text-gray-400 truncate">{fotoModal.autor}</p>}
+            </div>
           </div>
         </div>
       )}

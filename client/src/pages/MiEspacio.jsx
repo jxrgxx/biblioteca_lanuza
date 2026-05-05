@@ -45,9 +45,10 @@ export default function MiEspacio() {
     nueva: '',
     confirmar: '',
   });
+
   const [showActual, setShowActual] = useState(false);
   const [showNueva, setShowNueva] = useState(false);
-  const [passMsg, setPassMsg] = useState(null); // { ok, text }
+  const [passMsg, setPassMsg] = useState(null);
   const [passLoading, setPassLoading] = useState(false);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function MiEspacio() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const activos = prestamos.filter((p) => !p.devuelto);
@@ -284,15 +285,21 @@ export default function MiEspacio() {
                       </div>
                     ))}
                     <div>
-                      <p className="text-xs text-gray-400 uppercase mb-1">Alta</p>
+                      <p className="text-xs text-gray-400 uppercase mb-1">
+                        Alta
+                      </p>
                       <p className="font-medium text-gray-800">
-                        {perfil ? (fmt(perfil.fecha_alta) || '—') : '…'}
+                        {perfil ? fmt(perfil.fecha_alta) || '—' : '…'}
                       </p>
                     </div>
                     {perfil?.fecha_baja && (
                       <div>
-                        <p className="text-xs text-gray-400 uppercase mb-1">Baja</p>
-                        <p className="font-medium text-red-500">{fmt(perfil.fecha_baja)}</p>
+                        <p className="text-xs text-gray-400 uppercase mb-1">
+                          Baja
+                        </p>
+                        <p className="font-medium text-red-500">
+                          {fmt(perfil.fecha_baja)}
+                        </p>
                       </div>
                     )}
                   </div>

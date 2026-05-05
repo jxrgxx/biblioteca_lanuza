@@ -9,6 +9,8 @@ import {
   ChevronDown,
   ChevronsUpDown,
   GraduationCap,
+  Upload,
+  Download,
 } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
@@ -60,6 +62,18 @@ export default function Usuarios() {
 
   const [modalSubida, setModalSubida] = useState(false);
   const [subidaLoading, setSubidaLoading] = useState(false);
+
+  const [modalImportar, setModalImportar] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importRol, setImportRol] = useState('alumno');
+  const [importUbicacion, setImportUbicacion] = useState('');
+  const [importPassword, setImportPassword] = useState('');
+  const [showImportPass, setShowImportPass] = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // null = paso 1, array = paso 2
+  const [importError, setImportError] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
 
   const [modalEliminar, setModalEliminar] = useState(null); // { id, nombre, apellidos, prestamos }
   const [eliminandoLoading, setEliminandoLoading] = useState(false);
@@ -163,6 +177,9 @@ export default function Usuarios() {
       setModalEliminar(null);
       showToast('Usuario eliminado');
       load();
+    } catch (err) {
+      setModalEliminar(null);
+      alert(err.response?.data?.error || 'Error al eliminar el usuario');
     } finally {
       setEliminandoLoading(false);
     }
@@ -220,9 +237,14 @@ export default function Usuarios() {
   const sorted = [...filtered].sort((a, b) => {
     const va = a[sortCol] ?? '';
     const vb = b[sortCol] ?? '';
-    const cmp = String(va).localeCompare(String(vb), 'es', {
-      sensitivity: 'base',
-    });
+    let cmp;
+    if (sortCol === 'codigo') {
+      const na = parseInt(String(va).replace(/^U_/i, ''), 10);
+      const nb = parseInt(String(vb).replace(/^U_/i, ''), 10);
+      cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+    } else {
+      cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+    }
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -258,6 +280,100 @@ export default function Usuarios() {
     </th>
   );
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target))
+        setExportMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const abrirImportar = () => {
+    setImportFile(null);
+    setImportRol('alumno');
+    setImportUbicacion('');
+    setImportPassword('');
+    setShowImportPass(false);
+    setImportPreview(null);
+    setImportError('');
+    setModalImportar(true);
+  };
+
+  const parsearCSV = (texto) => {
+    const lineas = texto.split(/\r?\n/).filter((l) => l.trim());
+    if (!lineas.length) throw new Error('El archivo está vacío');
+    let inicio = 0;
+    const primera = lineas[0].toLowerCase();
+    if (
+      primera.includes('nombre') ||
+      primera.includes('apellido') ||
+      primera.includes('email') ||
+      primera.includes('correo')
+    ) {
+      inicio = 1;
+    }
+    const resultado = [];
+    for (let i = inicio; i < lineas.length; i++) {
+      const partes = lineas[i]
+        .split(',')
+        .map((p) => p.trim().replace(/^"|"$/g, ''));
+      if (partes.length < 3)
+        throw new Error(
+          `Línea ${i + 1}: se esperan 3 columnas (nombre, apellidos, email)`
+        );
+      const [nombre, apellidos, email] = partes;
+      if (!nombre || !apellidos || !email)
+        throw new Error(`Línea ${i + 1}: hay campos vacíos`);
+      resultado.push({ nombre, apellidos, email });
+    }
+    if (!resultado.length)
+      throw new Error('No se encontraron datos en el archivo');
+    return resultado;
+  };
+
+  const handlePrevisualizar = () => {
+    setImportError('');
+    if (!importFile) {
+      setImportError('Selecciona un archivo CSV');
+      return;
+    }
+    if (!importPassword) {
+      setImportError('Introduce la contraseña inicial');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const usuarios = parsearCSV(e.target.result);
+        setImportPreview(usuarios);
+      } catch (err) {
+        setImportError(err.message);
+      }
+    };
+    reader.readAsText(importFile, 'UTF-8');
+  };
+
+  const handleConfirmarImport = async () => {
+    setImportLoading(true);
+    setImportError('');
+    try {
+      const { data } = await api.post('/usuarios/importar', {
+        usuarios: importPreview,
+        rol: importRol,
+        ubicacion: importUbicacion || null,
+        password: importPassword,
+      });
+      setModalImportar(false);
+      showToast(`${data.importados} usuarios importados correctamente`);
+      load();
+    } catch (err) {
+      setImportError(err.response?.data?.error || 'Error al importar');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const hayFiltros = searchInput || filtroRol || filtroUbicacion;
   const limpiarFiltros = () => {
     setSearchInput('');
@@ -272,17 +388,53 @@ export default function Usuarios() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Usuarios</h1>
         <div className="flex gap-2">
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download size={15} />
+              Exportar
+              <ChevronDown
+                size={13}
+                className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                <button
+                  onClick={() => {
+                    exportarCSV(sorted, COLS_USUARIOS, 'usuarios_vista');
+                    setExportMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Vista actual
+                </button>
+                <button
+                  onClick={() => {
+                    exportarCSV(
+                      ordenarPor(usuarios, 'codigo'),
+                      COLS_USUARIOS,
+                      'usuarios_todos'
+                    );
+                    setExportMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Todo el listado
+                </button>
+              </div>
+            )}
+          </div>
           <button
-            onClick={() => exportarCSV(sorted, COLS_USUARIOS, 'usuarios_vista')}
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            onClick={abrirImportar}
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            ↓ Exportar vista
-          </button>
-          <button
-            onClick={() => exportarCSV(ordenarPor(usuarios, 'codigo'), COLS_USUARIOS, 'usuarios_todos')}
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ↓ Exportar todo
+            <Upload size={15} />
+            Importar CSV
           </button>
           <button
             onClick={() => setModalSubida(true)}
@@ -722,7 +874,7 @@ export default function Usuarios() {
               <button
                 onClick={handleDelete}
                 disabled={eliminandoLoading}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-MEDIUM rounded-lg transition-colors disabled:opacity-50"
               >
                 {eliminandoLoading
                   ? 'Eliminando...'
@@ -788,6 +940,217 @@ export default function Usuarios() {
                 {subidaLoading ? 'Procesando...' : 'Confirmar subida'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal importar CSV */}
+      {modalImportar && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <Upload size={18} className="text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Importar usuarios desde CSV
+                </h2>
+                <p className="text-xs text-gray-400">
+                  Formato esperado: nombre, apellidos, email
+                </p>
+              </div>
+            </div>
+
+            {importPreview === null ? (
+              /* ── PASO 1: configuración ── */
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Este importador solo es compatible con archivos .csv con
+                    valores separados por <b>comas</b>
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Archivo CSV *
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
+                    📁{' '}
+                    {importFile ? importFile.name : 'Seleccionar archivo .csv'}
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        setImportFile(e.target.files[0]);
+                        setImportError('');
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Rol *
+                    </label>
+                    <select
+                      value={importRol}
+                      onChange={(e) => setImportRol(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="alumno">Alumno</option>
+                      <option value="profesorado">Profesorado</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Curso / Ubicación
+                    </label>
+                    <select
+                      value={importUbicacion}
+                      onChange={(e) => setImportUbicacion(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value="">— Sin asignar —</option>
+                      {CURSOS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Contraseña inicial *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showImportPass ? 'text' : 'password'}
+                      value={importPassword}
+                      onChange={(e) => setImportPassword(e.target.value)}
+                      placeholder="Contraseña que tendrán todos los usuarios importados"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowImportPass((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showImportPass ? (
+                        <EyeOff size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {importError && (
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border bg-red-50 border-red-200 text-red-600">
+                    <span className="shrink-0">✗</span>
+                    <span>{importError}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalImportar(false)}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrevisualizar}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg"
+                  >
+                    Previsualizar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ── PASO 2: preview ── */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-gray-800">
+                      {importPreview.length} usuarios
+                    </span>{' '}
+                    listos para importar como{' '}
+                    <span className="font-medium">{importRol}</span>
+                    {importUbicacion && (
+                      <>
+                        {' '}
+                        · <span className="font-medium">{importUbicacion}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                      <tr>
+                        <th className="px-3 py-2 text-left">#</th>
+                        <th className="px-3 py-2 text-left">Nombre</th>
+                        <th className="px-3 py-2 text-left">Apellidos</th>
+                        <th className="px-3 py-2 text-left">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {importPreview.map((u, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-gray-400 text-xs">
+                            {i + 1}
+                          </td>
+                          <td className="px-3 py-2">{u.nombre}</td>
+                          <td className="px-3 py-2">{u.apellidos}</td>
+                          <td className="px-3 py-2 text-gray-500 text-xs font-mono">
+                            {u.email}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {importError && (
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border bg-red-50 border-red-200 text-red-600">
+                    <span className="shrink-0">✗</span>
+                    <span>{importError}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPreview(null);
+                      setImportError('');
+                    }}
+                    disabled={importLoading}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmarImport}
+                    disabled={importLoading}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                  >
+                    {importLoading
+                      ? 'Importando...'
+                      : `Confirmar importación (${importPreview.length})`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

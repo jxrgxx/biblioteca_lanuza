@@ -110,11 +110,13 @@ export default function Catalogo() {
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src="/arbol_logo_transparente_bordes.png"
-              alt="Logo"
-              className="h-10 object-contain"
-            />
+            <Link to="/">
+              <img
+                src="/arbol_logo_transparente_bordes.png"
+                alt="Logo"
+                className="h-10 object-contain"
+              />
+            </Link>
             <div>
               <p className="text-xl font-medium text-brand-600 uppercase tracking-tighter leading-none">
                 Biblioteca

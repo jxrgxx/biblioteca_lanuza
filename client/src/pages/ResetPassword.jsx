@@ -84,11 +84,13 @@ export default function ResetPassword() {
 
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <img
-              src="/arbol_logo_transparente_bordes.png"
-              alt="Logo Juan de Lanuza"
-              className="h-24 object-contain mb-3"
-            />
+            <Link to="/">
+              <img
+                src="/arbol_logo_transparente_bordes.png"
+                alt="Logo Juan de Lanuza"
+                className="h-24 object-contain mb-3"
+              />
+            </Link>
             <h1 className="text-brand-600 font-bold text-xl leading-tight">Biblioteca</h1>
             <p className="text-gray-400 text-sm">Juan de Lanuza</p>
           </div>

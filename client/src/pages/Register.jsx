@@ -78,11 +78,13 @@ export default function Register() {
         <div className="w-full max-w-lg bg-white rounded-xl shadow p-6">
           {/* Logo */}
           <div className="flex flex-col items-center mb-6">
-            <img
-              src="/arbol_logo_transparente.png"
-              alt="Logo Juan de Lanuza"
-              className="h-20 object-contain mb-3"
-            />
+            <Link to="/">
+              <img
+                src="/arbol_logo_transparente.png"
+                alt="Logo Juan de Lanuza"
+                className="h-20 object-contain mb-3"
+              />
+            </Link>
             <h1 className="text-brand-600 font-bold text-xl leading-tight">
               Biblioteca
             </h1>

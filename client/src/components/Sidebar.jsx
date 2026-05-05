@@ -26,7 +26,7 @@ const MAX_WIDTH = 400;
 const DEFAULT_WIDTH = 224;
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [collapsed, setCollapsed] = useState(() =>
@@ -76,11 +76,6 @@ export default function Sidebar() {
     startW.current = width;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
   };
 
   const sidebarWidth = collapsed ? 52 : width;
@@ -153,15 +148,6 @@ export default function Sidebar() {
         >
           <UserCircle size={18} className="flex-shrink-0" />
           {!collapsed && 'Mi espacio'}
-        </button>
-        <button
-          onClick={handleLogout}
-          title="Cerrar sesión"
-          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition-colors
-            ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
-        >
-          <LogOut size={18} className="flex-shrink-0" />
-          {!collapsed && 'Cerrar sesión'}
         </button>
       </div>
 

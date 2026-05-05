@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import Footer from '../components/Footer';
 import {
@@ -137,11 +137,13 @@ export default function LibroDetalle() {
       <nav className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img
-              src="/arbol_logo_transparente_bordes.png"
-              alt="Logo"
-              className="h-10 object-contain"
-            />
+            <Link to="/">
+              <img
+                src="/arbol_logo_transparente_bordes.png"
+                alt="Logo"
+                className="h-10 object-contain"
+              />
+            </Link>
             <div>
               <h1 className="text-xl font-medium text-brand-600 uppercase tracking-tighter leading-none">
                 Biblioteca

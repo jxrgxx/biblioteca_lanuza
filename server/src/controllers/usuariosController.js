@@ -109,6 +109,12 @@ exports.remove = async (req, res) => {
     ]);
     if (!rows.length)
       return res.status(404).json({ error: 'Usuario no encontrado' });
+    const [activos] = await db.query(
+      'SELECT id FROM prestamo WHERE id_usuario = ? AND devuelto = 0 LIMIT 1',
+      [req.params.id]
+    );
+    if (activos.length)
+      return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene préstamos activos' });
     await db.query('DELETE FROM usuario WHERE id = ?', [req.params.id]);
     res.json({ message: 'Usuario eliminado' });
   } catch (err) {
@@ -138,6 +144,42 @@ exports.toggleActivo = async (req, res) => {
     res.json({ activo: activo ? 1 : 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.importar = async (req, res) => {
+  const { usuarios, rol, ubicacion, password } = req.body;
+  if (!Array.isArray(usuarios) || !usuarios.length)
+    return res.status(400).json({ error: 'No hay usuarios para importar' });
+  if (!password)
+    return res.status(400).json({ error: 'La contraseña es obligatoria' });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const hash = await bcrypt.hash(password, 10);
+    for (const u of usuarios) {
+      const { nombre, apellidos, email } = u;
+      if (!nombre || !apellidos || !email)
+        throw new Error(`Fila incompleta: "${nombre || ''}" "${apellidos || ''}" "${email || ''}"`);
+      if (!email.toLowerCase().endsWith('@juandelanuza.org'))
+        throw new Error(`Email inválido: ${email}`);
+      const [result] = await conn.query(
+        'INSERT INTO usuario (nombre, apellidos, email, password, rol, ubicacion, fecha_alta) VALUES (?,?,?,?,?,?,CURDATE())',
+        [nombre, apellidos, email, hash, rol, ubicacion || null]
+      );
+      const newId = result.insertId;
+      await conn.query("UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?", [newId, newId]);
+    }
+    await conn.commit();
+    res.json({ importados: usuarios.length });
+  } catch (err) {
+    await conn.rollback();
+    if (err.code === 'ER_DUP_ENTRY')
+      return res.status(409).json({ error: 'Uno o más emails ya están registrados — no se ha importado ningún usuario' });
+    res.status(400).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 };
 

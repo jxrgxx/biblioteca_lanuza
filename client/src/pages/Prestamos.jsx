@@ -7,6 +7,7 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
+  Download,
 } from 'lucide-react';
 import api from '../services/api';
 import { fmt } from '../utils/dates';
@@ -47,6 +48,9 @@ export default function Prestamos() {
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(1);
 
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+
   // Modal nuevo préstamo
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -63,6 +67,15 @@ export default function Prestamos() {
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT);
   const [editError, setEditError] = useState('');
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target))
+        setExportMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -306,6 +319,7 @@ export default function Prestamos() {
 
   // Modal préstamo múltiple (lote)
   const [modalLote, setModalLote] = useState(false);
+  const [loteCantidad, setLoteCantidad] = useState('');
   const [loteUsuarioCod, setLoteUsuarioCod] = useState('');
   const [loteUsuario, setLoteUsuario] = useState(null);
   const [loteUsuarioError, setLoteUsuarioError] = useState('');
@@ -334,9 +348,7 @@ export default function Prestamos() {
       try {
         const { data } = await api.get(`/usuarios/${id}`);
         if (!['profesorado', 'personal'].includes(data.rol)) {
-          setLoteUsuarioError(
-            'Solo profesorado o personal puede realizar préstamos múltiples'
-          );
+          setLoteUsuarioError('Solo profesorado o personal');
           return;
         }
         setLoteUsuario(data);
@@ -394,6 +406,7 @@ export default function Prestamos() {
   };
 
   const openModalLote = () => {
+    setLoteCantidad('');
     setLoteUsuarioCod('');
     setLoteUsuario(null);
     setLoteUsuarioError('');
@@ -404,6 +417,16 @@ export default function Prestamos() {
     setLoteLoading(false);
     setLoteResultado(null);
     setModalLote(true);
+  };
+
+  const handleLoteCantidad = (val) => {
+    const n = parseInt(val, 10);
+    setLoteCantidad(val);
+    if (!isNaN(n) && n >= 1 && n <= 50) {
+      setLoteLibros(
+        Array.from({ length: n }, () => ({ qr: '', preview: null, error: '' }))
+      );
+    }
   };
 
   const handleLoteSubmit = async (e) => {
@@ -448,26 +471,34 @@ export default function Prestamos() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Préstamos</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() =>
-              exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista')
-            }
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ↓ Exportar vista
-          </button>
-          <button
-            onClick={() =>
-              exportarCSV(
-                ordenarPor(prestamos, 'fecha_devolucion_prevista'),
-                COLS_PRESTAMOS,
-                'prestamos_todos'
-              )
-            }
-            className="border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ↓ Exportar todo
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download size={15} />
+              Exportar
+              <ChevronDown size={13} className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                <button
+                  onClick={() => { exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista'); setExportMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Vista actual
+                </button>
+                <button
+                  onClick={() => { exportarCSV(ordenarPor(prestamos, 'fecha_devolucion_prevista'), COLS_PRESTAMOS, 'prestamos_todos'); setExportMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Download size={13} className="text-gray-400" />
+                  Todo el listado
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={openModalLote}
             className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -619,6 +650,7 @@ export default function Prestamos() {
               <Th col="codigo_lote">Lote</Th>
               <Th col="usuario_apellidos">Usuario</Th>
               <Th col="libro_titulo">Libro</Th>
+              <Th col="libro_codigo">Código Libro</Th>
               <Th col="fecha_inicio">F. Inicio</Th>
               <Th col="fecha_devolucion_prevista">F. Dev. prevista</Th>
               <Th col="fecha_devolucion_real">F. Dev. real</Th>
@@ -642,6 +674,7 @@ export default function Prestamos() {
                   {p.usuario_nombre} {p.usuario_apellidos}
                 </td>
                 <td className="px-4 py-3">{p.libro_titulo}</td>
+                <td className="px-4 py-3">{p.libro_codigo || '—'}</td>
                 <td className="px-4 py-3">{fmt(p.fecha_inicio)}</td>
                 <td className="px-4 py-3">
                   {p.fecha_devolucion_prevista ? (
@@ -951,7 +984,7 @@ export default function Prestamos() {
       {/* Modal préstamo múltiple */}
       {modalLote && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             {loteResultado ? (
               <>
                 <h2 className="text-lg font-bold mb-1">Lote creado</h2>
@@ -1014,41 +1047,68 @@ export default function Prestamos() {
               <>
                 <h2 className="text-lg font-bold mb-4">Préstamo múltiple</h2>
                 <form onSubmit={handleLoteSubmit} className="space-y-4">
+                  {/* Cantidad */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Número de libros
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      placeholder="Ej: 5"
+                      value={loteCantidad}
+                      onChange={(e) => handleLoteCantidad(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                      className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
                   {/* Usuario */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
                       Código QR usuario{' '}
                       <span className="text-gray-400">
-                        (U_1 — profesorado o personal)
+                        (U_1 - profesorado o personal)
                       </span>
                     </label>
-                    <input
-                      placeholder="U_3"
-                      value={loteUsuarioCod}
-                      onChange={(e) => {
-                        const v = e.target.value.toUpperCase();
-                        setLoteUsuarioCod(v);
-                        resolveLoteUsuario(v);
-                      }}
-                      onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-                      className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400' : 'border-gray-300'}`}
-                    />
-                    {loteUsuarioError && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {loteUsuarioError}
-                      </p>
-                    )}
-                    {loteUsuario && (
-                      <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
-                        <span className="text-green-600">✓</span>
-                        <span className="font-medium">
-                          {loteUsuario.nombre} {loteUsuario.apellidos}
-                        </span>
-                        <span className="text-gray-400 text-xs ml-auto">
-                          {loteUsuario.rol}
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-32 shrink-0">
+                        <input
+                          placeholder="U_3"
+                          value={loteUsuarioCod}
+                          onChange={(e) => {
+                            const v = e.target.value.toUpperCase();
+                            setLoteUsuarioCod(v);
+                            resolveLoteUsuario(v);
+                          }}
+                          onKeyDown={(e) =>
+                            e.key === 'Enter' && e.preventDefault()
+                          }
+                          className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400' : 'border-gray-300'}`}
+                        />
                       </div>
-                    )}
+                      <div className="flex-1 min-w-0">
+                        {loteUsuarioError && (
+                          <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border bg-red-50 border-red-200">
+                            <span className="text-red-500 shrink-0">✗</span>
+                            <span className="font-medium text-red-600 truncate">
+                              {loteUsuarioError}
+                            </span>
+                          </div>
+                        )}
+                        {loteUsuario && (
+                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-sm">
+                            <span className="text-green-600 shrink-0">✓</span>
+                            <span className="font-medium truncate">
+                              {loteUsuario.nombre} {loteUsuario.apellidos}
+                            </span>
+                            <span className="text-gray-400 text-xs ml-auto shrink-0">
+                              {loteUsuario.rol}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Libros dinámicos */}
@@ -1059,8 +1119,13 @@ export default function Prestamos() {
                     </label>
                     <div className="space-y-2">
                       {loteLibros.map((lb, idx) => (
-                        <div key={idx}>
-                          <div className="flex gap-2 items-center">
+                        <div key={idx} className="flex items-center gap-2">
+                          {/* Número */}
+                          <span className="text-xs text-gray-400 w-5 text-right shrink-0">
+                            {idx + 1}
+                          </span>
+                          {/* Input con X dentro */}
+                          <div className="relative w-32 min-w-0">
                             <input
                               placeholder={`L_${idx + 1}`}
                               value={lb.qr}
@@ -1073,7 +1138,7 @@ export default function Prestamos() {
                               onKeyDown={(e) =>
                                 e.key === 'Enter' && e.preventDefault()
                               }
-                              className={`flex-1 border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${lb.error ? 'border-red-400' : lb.preview ? 'border-green-400' : 'border-gray-300'}`}
+                              className={`w-full border rounded-lg pl-3 pr-7 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${lb.error ? 'border-red-400' : lb.preview ? (lb.preview.estado === 'disponible' ? 'border-green-400' : 'border-yellow-400') : 'border-gray-300'}`}
                             />
                             {loteLibros.length > 1 && (
                               <button
@@ -1083,39 +1148,47 @@ export default function Prestamos() {
                                     prev.filter((_, i) => i !== idx)
                                   )
                                 }
-                                className="text-red-400 hover:text-red-600 px-2 py-1 text-lg leading-none"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 text-base leading-none"
                                 title="Quitar libro"
                               >
                                 ×
                               </button>
                             )}
                           </div>
-                          {lb.error && (
-                            <p className="text-red-500 text-xs mt-1 ml-1">
-                              {lb.error}
-                            </p>
-                          )}
-                          {lb.preview && (
-                            <div
-                              className={`mt-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border ${lb.preview.estado === 'disponible' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-300'}`}
-                            >
-                              <span
-                                className={
-                                  lb.preview.estado === 'disponible'
-                                    ? 'text-green-600'
-                                    : 'text-yellow-600'
-                                }
+                          {/* Preview a la derecha */}
+                          <div className="flex-1 min-w-0">
+                            {lb.error && (
+                              <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border bg-red-50 border-red-200">
+                                <span className="text-red-500 shrink-0">✗</span>
+                                <span className="font-medium text-red-600 truncate">
+                                  {lb.error}
+                                </span>
+                              </div>
+                            )}
+                            {lb.preview && !lb.error && (
+                              <div
+                                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border ${lb.preview.estado === 'disponible' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-300'}`}
                               >
-                                {lb.preview.estado === 'disponible' ? '✓' : '⚠'}
-                              </span>
-                              <span className="font-medium truncate">
-                                {lb.preview.titulo}
-                              </span>
-                              <span className="text-gray-400 text-xs ml-auto shrink-0">
-                                {lb.preview.estado}
-                              </span>
-                            </div>
-                          )}
+                                <span
+                                  className={
+                                    lb.preview.estado === 'disponible'
+                                      ? 'text-green-600 shrink-0'
+                                      : 'text-yellow-600 shrink-0'
+                                  }
+                                >
+                                  {lb.preview.estado === 'disponible'
+                                    ? '✓'
+                                    : '⚠'}
+                                </span>
+                                <span className="font-medium truncate">
+                                  {lb.preview.titulo}
+                                </span>
+                                <span className="text-gray-400 text-xs ml-auto shrink-0">
+                                  {lb.preview.estado}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
