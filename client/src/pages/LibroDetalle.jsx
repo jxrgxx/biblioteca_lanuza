@@ -139,7 +139,7 @@ export default function LibroDetalle() {
           <div className="flex items-center gap-3">
             <Link to="/">
               <img
-                src="/arbol_logo_transparente_bordes.png"
+                src="/arbol_logo_transparente_wide.png"
                 alt="Logo"
                 className="h-10 object-contain"
               />

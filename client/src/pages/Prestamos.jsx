@@ -41,6 +41,8 @@ export default function Prestamos() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
+  const [filtroDesde, setFiltroDesde] = useState('');
+  const [filtroHasta, setFiltroHasta] = useState('');
   const debounceRef = useRef(null);
 
   // Ordenación y paginación
@@ -79,6 +81,8 @@ export default function Prestamos() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  const [usuariosGestion, setUsuariosGestion] = useState([]);
+
   const load = async () => {
     const { data } = await api.get('/prestamos');
     setPrestamos(data);
@@ -87,6 +91,11 @@ export default function Prestamos() {
 
   useEffect(() => {
     load();
+    api.get('/usuarios').then(({ data }) => {
+      setUsuariosGestion(
+        data.filter((u) => ['profesorado', 'personal'].includes(u.rol) && u.activo)
+      );
+    });
   }, []);
 
   const handleSearchInput = (val) => {
@@ -118,6 +127,8 @@ export default function Prestamos() {
     if (filtroEstado === 'vencidos' && !vencido(p)) return false;
     if (filtroEstado === 'devueltos' && !p.devuelto) return false;
     if (filtroMes && !p.fecha_inicio?.startsWith(filtroMes)) return false;
+    if (filtroDesde && p.fecha_inicio < filtroDesde) return false;
+    if (filtroHasta && p.fecha_inicio > filtroHasta) return false;
     if (search) {
       const q = search.toLowerCase();
       const matches =
@@ -173,11 +184,13 @@ export default function Prestamos() {
     </th>
   );
 
-  const hayFiltros = searchInput || filtroMes;
+  const hayFiltros = searchInput || filtroMes || filtroDesde || filtroHasta;
   const limpiarFiltros = () => {
     setSearchInput('');
     setSearch('');
     setFiltroMes('');
+    setFiltroDesde('');
+    setFiltroHasta('');
     setPage(1);
   };
 
@@ -419,6 +432,7 @@ export default function Prestamos() {
     setModalLote(true);
   };
 
+
   const handleLoteCantidad = (val) => {
     const n = parseInt(val, 10);
     setLoteCantidad(val);
@@ -478,19 +492,32 @@ export default function Prestamos() {
             >
               <Download size={15} />
               Exportar
-              <ChevronDown size={13} className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                size={13}
+                className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`}
+              />
             </button>
             {exportMenuOpen && (
               <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
                 <button
-                  onClick={() => { exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista'); setExportMenuOpen(false); }}
+                  onClick={() => {
+                    exportarCSV(sorted, COLS_PRESTAMOS, 'prestamos_vista');
+                    setExportMenuOpen(false);
+                  }}
                   className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <Download size={13} className="text-gray-400" />
                   Vista actual
                 </button>
                 <button
-                  onClick={() => { exportarCSV(ordenarPor(prestamos, 'fecha_devolucion_prevista'), COLS_PRESTAMOS, 'prestamos_todos'); setExportMenuOpen(false); }}
+                  onClick={() => {
+                    exportarCSV(
+                      ordenarPor(prestamos, 'fecha_devolucion_prevista'),
+                      COLS_PRESTAMOS,
+                      'prestamos_todos'
+                    );
+                    setExportMenuOpen(false);
+                  }}
                   className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <Download size={13} className="text-gray-400" />
@@ -608,16 +635,18 @@ export default function Prestamos() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <select
             value={filtroMes}
             onChange={(e) => {
               setFiltroMes(e.target.value);
+              setFiltroDesde('');
+              setFiltroHasta('');
               setPage(1);
             }}
             className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroMes ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
           >
-            <option value="">Todos los meses</option>
+            <option value="">Mes</option>
             {mesesDisponibles.map((m) => {
               const [y, mo] = m.split('-');
               const label = new Date(y, mo - 1).toLocaleString('es', {
@@ -631,6 +660,31 @@ export default function Prestamos() {
               );
             })}
           </select>
+
+          <span className="text-xs text-gray-400">o rango:</span>
+
+          <input
+            type="date"
+            value={filtroDesde}
+            onChange={(e) => {
+              setFiltroDesde(e.target.value);
+              setFiltroMes('');
+              setPage(1);
+            }}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroDesde ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
+          />
+          <span className="text-xs text-gray-400">hasta</span>
+          <input
+            type="date"
+            value={filtroHasta}
+            min={filtroDesde || undefined}
+            onChange={(e) => {
+              setFiltroHasta(e.target.value);
+              setFiltroMes('');
+              setPage(1);
+            }}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroHasta ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
+          />
         </div>
 
         <p className="text-xs text-gray-400">
@@ -771,7 +825,9 @@ export default function Prestamos() {
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold mb-4">Nuevo préstamo</h2>
+            <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
+              <h2 className="text-lg font-bold">Nuevo préstamo</h2>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Usuario QR */}
               <div>
@@ -911,7 +967,9 @@ export default function Prestamos() {
       {editModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold mb-4">Editar préstamo</h2>
+            <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
+              <h2 className="text-lg font-bold">Editar préstamo</h2>
+            </div>
             <form onSubmit={handleEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -987,10 +1045,10 @@ export default function Prestamos() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             {loteResultado ? (
               <>
-                <h2 className="text-lg font-bold mb-1">Lote creado</h2>
-                <p className="text-sm text-gray-500 mb-4 font-mono">
-                  {loteResultado.lote}
-                </p>
+                <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
+                  <h2 className="text-lg font-bold">Lote creado</h2>
+                  <p className="text-sm text-white/70 font-mono mt-0.5">{loteResultado.lote}</p>
+                </div>
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   {loteResultado.creados.length} préstamo
                   {loteResultado.creados.length !== 1 && 's'} registrado
@@ -1045,7 +1103,9 @@ export default function Prestamos() {
               </>
             ) : (
               <>
-                <h2 className="text-lg font-bold mb-4">Préstamo múltiple</h2>
+                <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
+                  <h2 className="text-lg font-bold">Préstamo múltiple</h2>
+                </div>
                 <form onSubmit={handleLoteSubmit} className="space-y-4">
                   {/* Cantidad */}
                   <div>
@@ -1066,49 +1126,37 @@ export default function Prestamos() {
                   {/* Usuario */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Código QR usuario{' '}
-                      <span className="text-gray-400">
-                        (U_1 - profesorado o personal)
-                      </span>
+                      Usuario
                     </label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-32 shrink-0">
-                        <input
-                          placeholder="U_3"
-                          value={loteUsuarioCod}
-                          onChange={(e) => {
-                            const v = e.target.value.toUpperCase();
-                            setLoteUsuarioCod(v);
-                            resolveLoteUsuario(v);
-                          }}
-                          onKeyDown={(e) =>
-                            e.key === 'Enter' && e.preventDefault()
-                          }
-                          className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400' : 'border-gray-300'}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {loteUsuarioError && (
-                          <div className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border bg-red-50 border-red-200">
-                            <span className="text-red-500 shrink-0">✗</span>
-                            <span className="font-medium text-red-600 truncate">
-                              {loteUsuarioError}
-                            </span>
-                          </div>
-                        )}
-                        {loteUsuario && (
-                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 text-sm">
-                            <span className="text-green-600 shrink-0">✓</span>
-                            <span className="font-medium truncate">
-                              {loteUsuario.nombre} {loteUsuario.apellidos}
-                            </span>
-                            <span className="text-gray-400 text-xs ml-auto shrink-0">
-                              {loteUsuario.rol}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <select
+                      value={loteUsuarioCod}
+                      onChange={(e) => {
+                        const cod = e.target.value;
+                        setLoteUsuarioCod(cod);
+                        const u = usuariosGestion.find((u) => u.codigo === cod);
+                        setLoteUsuario(u || null);
+                        setLoteUsuarioError('');
+                      }}
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${loteUsuarioError ? 'border-red-400' : loteUsuario ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}
+                    >
+                      <option value="">Seleccionar usuario...</option>
+                      {['profesorado', 'personal'].map((rol) => {
+                        const grupo = usuariosGestion.filter((u) => u.rol === rol);
+                        if (!grupo.length) return null;
+                        return (
+                          <optgroup key={rol} label={rol === 'profesorado' ? 'Profesorado' : 'Personal'}>
+                            {grupo.map((u) => (
+                              <option key={u.id} value={u.codigo}>
+                                {u.apellidos}, {u.nombre} · {u.codigo}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                    {loteUsuarioError && (
+                      <p className="text-red-500 text-xs mt-1">{loteUsuarioError}</p>
+                    )}
                   </div>
 
                   {/* Libros dinámicos */}

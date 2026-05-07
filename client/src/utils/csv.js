@@ -111,6 +111,20 @@ export const COLS_LIBROS = [
   { key: 'estado', label: 'Estado' },
 ];
 
+export const COLS_ACTIVIDADES = [
+  { key: 'nombre', label: 'Nombre' },
+  { key: 'fecha', label: 'Fecha', fmt: fmtFecha },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'subtipo', label: 'Subtipo' },
+  { key: 'idioma', label: 'Idioma' },
+  { key: 'duracion', label: 'Duración', fmt: (v) => v ? v.slice(0, 5) : '' },
+  { key: 'destinatario', label: 'Destinatario' },
+  { key: 'curso_destinatario', label: 'Curso' },
+  { key: 'objetivos', label: 'Objetivos' },
+  { key: 'reflexiones', label: 'Reflexiones' },
+  { key: 'fotos', label: 'Nº fotos', fmt: (v) => Array.isArray(v) ? v.length : 0 },
+];
+
 export const COLS_USUARIOS = [
   { key: 'codigo', label: 'Código' },
   { key: 'nombre', label: 'Nombre' },

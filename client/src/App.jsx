@@ -16,6 +16,7 @@ import Estadisticas from './pages/Estadisticas';
 import MiEspacio from './pages/MiEspacio';
 import Catalogo from './pages/Catalogo';
 import LibroDetalle from './pages/LibroDetalle';
+import Actividades from './pages/Actividades';
 
 function Layout({ children }) {
   return (
@@ -102,6 +103,16 @@ export default function App() {
           <PrivateRoute onlyPersonal>
             <Layout>
               <Estadisticas />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/actividades"
+        element={
+          <PrivateRoute onlyPersonal>
+            <Layout>
+              <Actividades />
             </Layout>
           </PrivateRoute>
         }

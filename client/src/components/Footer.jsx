@@ -7,7 +7,6 @@ function Footer() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           {/* COLUMNA 1: INFO COLEGIO */}
           <div className="flex items-center gap-2">
-            <BookOpen size={16} className="text-[#7F252E]" />
             <span className="font-bold text-[#7F252E] uppercase tracking-wider text-xs">
               Lanuza Libros
             </span>

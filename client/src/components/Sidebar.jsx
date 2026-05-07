@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
@@ -10,6 +10,8 @@ import {
   BarChart2,
   UserCircle,
   LogOut,
+  Globe,
+  CalendarDays,
 } from 'lucide-react';
 
 const nav = [
@@ -18,6 +20,7 @@ const nav = [
   { to: '/prestamos', label: 'Préstamos', icon: Bookmark },
   { to: '/usuarios', label: 'Usuarios', icon: Users },
   { to: '/registro', label: 'Registro', icon: ClipboardList },
+  { to: '/actividades', label: 'Actividades', icon: CalendarDays },
   { to: '/estadisticas', label: 'Estadísticas', icon: BarChart2 },
 ];
 
@@ -135,11 +138,6 @@ export default function Sidebar() {
       <div
         className={`border-t border-brand-600 py-3 ${collapsed ? 'flex flex-col items-center gap-2 px-2' : 'px-3 space-y-1.5'}`}
       >
-        {!collapsed && (
-          <p className="text-xs text-brand-300 truncate px-2 mb-1">
-            {user?.nombre} {user?.apellidos}
-          </p>
-        )}
         <button
           onClick={() => navigate('/mi-espacio')}
           title="Mi espacio"
@@ -149,6 +147,15 @@ export default function Sidebar() {
           <UserCircle size={18} className="flex-shrink-0" />
           {!collapsed && 'Mi espacio'}
         </button>
+        <Link
+          to="/"
+          title="Ver catálogo"
+          className={`w-full flex items-center gap-2.5 rounded-lg text-sm font-medium text-brand-100 hover:text-white hover:bg-white/10 transition-all
+            ${collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5'}`}
+        >
+          <BookOpen size={18} className="flex-shrink-0" />
+          {!collapsed && 'Ir al catálogo'}
+        </Link>
       </div>
 
       {/* Drag handle */}

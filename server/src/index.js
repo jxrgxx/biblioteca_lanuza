@@ -30,6 +30,7 @@ app.use('/api/registro', require('./routes/registro'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api/estanterias', require('./routes/estanterias'));
 app.use('/api/estadisticas', require('./routes/estadisticas'));
+app.use('/api/actividades', require('./routes/actividades'));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {

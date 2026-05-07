@@ -112,7 +112,7 @@ export default function Catalogo() {
           <div className="flex items-center gap-3">
             <Link to="/">
               <img
-                src="/arbol_logo_transparente_bordes.png"
+                src="/arbol_logo_transparente_wide.png"
                 alt="Logo"
                 className="h-10 object-contain"
               />
@@ -144,7 +144,7 @@ export default function Catalogo() {
           ) : (
             <Link
               to="/login"
-              className="bg-brand-600 text-white font-semibold text-sm px-5 py-2 rounded-full hover:bg-brand-700 transition-colors"
+              className="bg-brand-600 text-white font-medium text-sm px-5 py-2 rounded-full hover:bg-brand-700 transition-colors"
             >
               Acceder
             </Link>

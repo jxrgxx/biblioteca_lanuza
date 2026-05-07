@@ -3,12 +3,14 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
+-- Tiempo de generación: 07-05-2026 a las 11:21:10
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -21,15 +23,20 @@ SET time_zone = "+00:00";
 
 -- --------------------------------------------------------
 
+--
+-- Estructura de tabla para la tabla `config`
+--
+
 CREATE TABLE `config` (
   `clave` varchar(50) NOT NULL,
   `valor` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `config` (`clave`, `valor`) VALUES
-('codigo_registro', 'AGHSQE');
-
 -- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estanteria`
+--
 
 CREATE TABLE `estanteria` (
   `id` int(10) UNSIGNED NOT NULL,
@@ -38,22 +45,30 @@ CREATE TABLE `estanteria` (
 
 -- --------------------------------------------------------
 
+--
+-- Estructura de tabla para la tabla `libro`
+--
+
 CREATE TABLE `libro` (
   `id` int(10) UNSIGNED NOT NULL,
   `codigo` varchar(6) DEFAULT NULL,
   `titulo` varchar(255) NOT NULL,
   `autor` varchar(150) DEFAULT NULL,
   `editorial` varchar(100) DEFAULT NULL,
-  `volumen` int(11) DEFAULT NULL,
+  `volumen` varchar(50) DEFAULT NULL,
   `idioma` varchar(50) DEFAULT NULL,
   `genero` varchar(100) DEFAULT NULL,
   `estanteria` varchar(50) DEFAULT NULL,
-  `categoria` varchar(100) NOT NULL,
+  `categoria` varchar(100) DEFAULT NULL,
   `estado` enum('disponible','prestado','extraviado','no disponible') NOT NULL DEFAULT 'disponible',
   `nombre_foto` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `password_reset`
+--
 
 CREATE TABLE `password_reset` (
   `id` int(11) NOT NULL,
@@ -65,6 +80,10 @@ CREATE TABLE `password_reset` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `prestamo`
+--
 
 CREATE TABLE `prestamo` (
   `id` int(10) UNSIGNED NOT NULL,
@@ -81,6 +100,10 @@ CREATE TABLE `prestamo` (
 
 -- --------------------------------------------------------
 
+--
+-- Estructura de tabla para la tabla `recordatorio`
+--
+
 CREATE TABLE `recordatorio` (
   `id` int(10) UNSIGNED NOT NULL,
   `id_prestamo` int(10) UNSIGNED DEFAULT NULL,
@@ -92,6 +115,10 @@ CREATE TABLE `recordatorio` (
 
 -- --------------------------------------------------------
 
+--
+-- Estructura de tabla para la tabla `registro`
+--
+
 CREATE TABLE `registro` (
   `id` int(10) UNSIGNED NOT NULL,
   `nombre` varchar(100) NOT NULL,
@@ -101,6 +128,10 @@ CREATE TABLE `registro` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuario`
+--
 
 CREATE TABLE `usuario` (
   `id` int(10) UNSIGNED NOT NULL,
@@ -116,28 +147,40 @@ CREATE TABLE `usuario` (
   `fecha_baja` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `usuario` (`id`, `codigo`, `nombre`, `apellidos`, `email`, `password`, `rol`, `ubicacion`, `activo`, `fecha_alta`, `fecha_baja`) VALUES
-(1, 'U_1', 'Biblioteca', 'Juan de Lanuza', 'biblioteca@juandelanuza.org', '$2a$10$1y6zBd.ELhFBL5madTGpvuheV5PDdPJeo4EHbQJSF/YAVn7NosK1G', 'biblioteca', NULL, 1, NULL, NULL);
-
 --
--- Índices
+-- Índices para tablas volcadas
 --
 
+--
+-- Indices de la tabla `config`
+--
 ALTER TABLE `config`
   ADD PRIMARY KEY (`clave`);
 
+--
+-- Indices de la tabla `estanteria`
+--
 ALTER TABLE `estanteria`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `nombre` (`nombre`);
 
+--
+-- Indices de la tabla `libro`
+--
 ALTER TABLE `libro`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo` (`codigo`);
 
+--
+-- Indices de la tabla `password_reset`
+--
 ALTER TABLE `password_reset`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `token` (`token`);
 
+--
+-- Indices de la tabla `prestamo`
+--
 ALTER TABLE `prestamo`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo` (`codigo`),
@@ -145,51 +188,134 @@ ALTER TABLE `prestamo`
   ADD KEY `prestamo_ibfk_1` (`id_usuario`),
   ADD KEY `idx_codigo_lote` (`codigo_lote`);
 
+--
+-- Indices de la tabla `recordatorio`
+--
 ALTER TABLE `recordatorio`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_pendientes` (`enviado`,`enviar_en`);
 
+--
+-- Indices de la tabla `registro`
+--
 ALTER TABLE `registro`
   ADD PRIMARY KEY (`id`);
 
+--
+-- Indices de la tabla `usuario`
+--
 ALTER TABLE `usuario`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
   ADD UNIQUE KEY `codigo` (`codigo`);
 
 --
--- AUTO_INCREMENT
+-- AUTO_INCREMENT de las tablas volcadas
 --
 
+--
+-- AUTO_INCREMENT de la tabla `estanteria`
+--
 ALTER TABLE `estanteria`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT de la tabla `libro`
+--
 ALTER TABLE `libro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT de la tabla `password_reset`
+--
 ALTER TABLE `password_reset`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT de la tabla `prestamo`
+--
 ALTER TABLE `prestamo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT de la tabla `recordatorio`
+--
 ALTER TABLE `recordatorio`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT de la tabla `registro`
+--
 ALTER TABLE `registro`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
--- usuario: id=1 ocupado por biblioteca, el próximo será U_2
+--
+-- AUTO_INCREMENT de la tabla `usuario`
+--
 ALTER TABLE `usuario`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- Restricciones
+-- Restricciones para tablas volcadas
 --
 
+--
+-- Filtros para la tabla `prestamo`
+--
 ALTER TABLE `prestamo`
   ADD CONSTRAINT `prestamo_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `prestamo_ibfk_2` FOREIGN KEY (`id_libro`) REFERENCES `libro` (`id`);
+-- --------------------------------------------------------
+
+CREATE TABLE `actividad` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `nombre` varchar(200) NOT NULL,
+  `fecha` date NOT NULL,
+  `tipo` enum('PYP','escritura_creativa','indagacion') NOT NULL,
+  `duracion` time DEFAULT NULL,
+  `destinatario` enum('curso','profes','familias') NOT NULL,
+  `objetivos` text DEFAULT NULL,
+  `reflexiones` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+CREATE TABLE `actividad_foto` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `id_actividad` int(10) UNSIGNED NOT NULL,
+  `nombre_foto` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Índices de la tabla `actividad`
+--
+ALTER TABLE `actividad`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de la tabla `actividad_foto`
+--
+ALTER TABLE `actividad_foto`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_actividad` (`id_actividad`);
+
+--
+-- AUTO_INCREMENT de la tabla `actividad`
+--
+ALTER TABLE `actividad`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
+--
+-- AUTO_INCREMENT de la tabla `actividad_foto`
+--
+ALTER TABLE `actividad_foto`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
+--
+-- Restricciones de la tabla `actividad_foto`
+--
+ALTER TABLE `actividad_foto`
+  ADD CONSTRAINT `actividad_foto_ibfk_1` FOREIGN KEY (`id_actividad`) REFERENCES `actividad` (`id`) ON DELETE CASCADE;
 
 COMMIT;
 

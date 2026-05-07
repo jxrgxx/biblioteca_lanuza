@@ -65,7 +65,7 @@ export default function Register() {
         className="hidden xl:flex flex-col items-center justify-center px-16 flex-shrink-0"
         style={{
           width: '52%',
-          clipPath: 'circle(100% at 3% 50%)',
+          clipPath: 'circle(100% at 1% 50%)',
           backgroundImage: "url('/login-bg.jpg')",
           backgroundSize: 'cover',
           backgroundPosition: '75% center',
@@ -80,7 +80,7 @@ export default function Register() {
           <div className="flex flex-col items-center mb-6">
             <Link to="/">
               <img
-                src="/arbol_logo_transparente.png"
+                src="/arbol_logo_transparente_wide.png"
                 alt="Logo Juan de Lanuza"
                 className="h-20 object-contain mb-3"
               />
