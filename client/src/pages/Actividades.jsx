@@ -121,7 +121,6 @@ function FormFields({ values, onChange, error, isEdit = false }) {
           <input
             type="date"
             required
-            min={today}
             value={values.fecha}
             onChange={(e) => onChange('fecha', e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -856,7 +855,7 @@ export default function Actividades() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
-              <h2 className="text-lg font-bold">Nueva actividad</h2>
+              <h2 className="text-lg font-medium">Nueva actividad</h2>
             </div>
             <form onSubmit={handleSubmit}>
               <FormFields values={form} onChange={set} error={formError} />

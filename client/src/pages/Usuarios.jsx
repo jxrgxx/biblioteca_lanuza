@@ -668,7 +668,7 @@ export default function Usuarios() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
-              <h2 className="text-lg font-bold">
+              <h2 className="text-lg font-medium">
                 {editing ? 'Editar usuario' : 'Nuevo usuario'}
               </h2>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   BookOpen,
   Users,
@@ -10,6 +10,10 @@ import {
   AlertCircle,
   CalendarDays,
   BarChart2,
+  Activity,
+  Layers,
+  Globe,
+  RefreshCw,
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -51,7 +55,10 @@ const RANGOS = [
   {
     label: 'Este mes',
     desde: () => hoy.toISOString().slice(0, 7) + '-01',
-    hasta: () => hoy.toISOString().slice(0, 10),
+    hasta: () =>
+      new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)
+        .toISOString()
+        .slice(0, 10),
   },
   {
     label: 'Trimestre',
@@ -61,7 +68,7 @@ const RANGOS = [
   {
     label: 'Este año',
     desde: () => `${hoy.getFullYear()}-01-01`,
-    hasta: () => hoy.toISOString().slice(0, 10),
+    hasta: () => `${hoy.getFullYear()}-12-31`,
   },
   { label: 'Curso escolar', desde: cursoDesde, hasta: cursoHasta },
   { label: 'Todo', desde: () => '', hasta: () => '' },
@@ -158,10 +165,95 @@ const STATS = [
     filters: ['periodo'],
     color: 'text-purple-600',
   },
+  {
+    id: 'act-resumen',
+    group: 'Actividades',
+    label: 'Resumen general',
+    icon: Activity,
+    filters: ['periodo'],
+    color: 'text-brand-600',
+  },
+  {
+    id: 'act-por-tipo',
+    group: 'Actividades',
+    label: 'Por tipo',
+    icon: BarChart2,
+    filters: ['periodo'],
+    color: 'text-blue-600',
+  },
+  {
+    id: 'act-pyp-lineas',
+    group: 'Actividades',
+    label: 'Líneas PYP',
+    icon: Layers,
+    filters: ['periodo'],
+    color: 'text-indigo-600',
+  },
+  {
+    id: 'act-por-destinatario',
+    group: 'Actividades',
+    label: 'Por destinatario',
+    icon: Users,
+    filters: ['periodo'],
+    color: 'text-purple-600',
+  },
+  {
+    id: 'act-por-curso',
+    group: 'Actividades',
+    label: 'Por curso',
+    icon: GraduationCap,
+    filters: ['periodo'],
+    color: 'text-green-600',
+  },
+  {
+    id: 'act-por-mes',
+    group: 'Actividades',
+    label: 'Evolución mensual',
+    icon: TrendingUp,
+    filters: ['periodo'],
+    color: 'text-orange-500',
+  },
+  {
+    id: 'act-por-idioma',
+    group: 'Actividades',
+    label: 'Por idioma',
+    icon: Globe,
+    filters: ['periodo'],
+    color: 'text-teal-600',
+  },
 ];
 
 const GROUPS = [...new Set(STATS.map((s) => s.group))];
 const LIMITS = [5, 10, 20, 50];
+
+/* ── helpers actividades ── */
+const TIPO_LABEL = {
+  PYP: 'Actividad PYP',
+  escritura_creativa: 'Escritura creativa',
+  indagacion_libre: 'Indagación libre',
+  taller_lectura: 'Taller de lectura',
+  charla: 'Charla',
+  otro: 'Otro',
+};
+const DEST_LABEL = {
+  curso: 'Curso',
+  profes: 'Profesorado',
+  familias: 'Familias',
+};
+
+function parseDurMin(s) {
+  if (!s) return 0;
+  const p = s.split(':');
+  return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+}
+function fmtDurMin(min) {
+  if (!min) return '0 min';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m} min`;
+}
 
 /* ── componentes visuales ── */
 function Bar({ value, max, color = 'bg-brand-600' }) {
@@ -208,6 +300,7 @@ function FiltrosPeriodo({
   hasta,
   setHasta,
   onAplicar,
+  showApply = true,
 }) {
   return (
     <div className="space-y-2">
@@ -223,6 +316,9 @@ function FiltrosPeriodo({
               if (r.desde !== null) {
                 setDesde(r.desde());
                 setHasta(r.hasta());
+              } else {
+                setDesde('');
+                setHasta('');
               }
             }}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -250,12 +346,14 @@ function FiltrosPeriodo({
             onChange={(e) => setHasta(e.target.value)}
             className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
-          <button
-            onClick={onAplicar}
-            className="px-3 py-1 bg-brand-600 text-white text-xs font-semibold rounded-lg hover:bg-brand-700"
-          >
-            Aplicar
-          </button>
+          {showApply && (
+            <button
+              onClick={onAplicar}
+              className="px-3 py-1 bg-brand-600 text-white text-xs font-medium rounded-lg hover:bg-brand-700"
+            >
+              Aplicar
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -559,6 +657,136 @@ function RenderDiaSemana({ data }) {
   );
 }
 
+/* ── renderizadores actividades ── */
+function RenderActResumen({ s }) {
+  if (s.total === 0) return <Empty />;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <KPI label="Actividades realizadas" value={s.total} />
+      <KPI
+        label="Horas totales"
+        value={fmtDurMin(s.totalMin)}
+        color="text-blue-600"
+      />
+      <KPI
+        label="Duración media"
+        value={fmtDurMin(s.mediaMin)}
+        color="text-orange-500"
+        sub="por actividad"
+      />
+    </div>
+  );
+}
+function RenderActPorTipo({ s }) {
+  if (!s.porTipo.length) return <Empty />;
+  const max = s.porTipo[0].total;
+  return (
+    <div className="space-y-3">
+      {s.porTipo.map((t) => (
+        <div key={t.tipo} className="flex items-center gap-3">
+          <span className="text-xs text-gray-700 w-40 shrink-0 truncate">
+            {t.label}
+          </span>
+          <Bar value={t.total} max={max} color="bg-blue-500" />
+        </div>
+      ))}
+    </div>
+  );
+}
+function RenderActPypLineas({ s }) {
+  const totalPYP = s.porTipo.find((t) => t.tipo === 'PYP')?.total ?? 0;
+  if (!totalPYP)
+    return (
+      <p className="text-sm text-gray-400 text-center py-8">
+        No hay actividades PYP en este período
+      </p>
+    );
+  if (!s.pypLineas.length) return <Empty />;
+  const max = s.pypLineas[0].total;
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-400 mb-1">
+        Total actividades PYP: {totalPYP}
+      </p>
+      {s.pypLineas.map((p) => (
+        <div key={p.subtipo} className="flex items-center gap-3">
+          <span className="text-xs text-gray-700 w-52 shrink-0 truncate">
+            {p.subtipo}
+          </span>
+          <Bar value={p.total} max={max} color="bg-indigo-500" />
+        </div>
+      ))}
+    </div>
+  );
+}
+function RenderActPorDestinatario({ s }) {
+  if (!s.porDest.length) return <Empty />;
+  const max = s.porDest[0].total;
+  return (
+    <div className="space-y-3">
+      {s.porDest.map((d) => (
+        <div key={d.dest} className="flex items-center gap-3">
+          <span className="text-xs text-gray-700 w-28 shrink-0">
+            {DEST_LABEL[d.dest] ?? d.dest}
+          </span>
+          <Bar value={d.total} max={max} color="bg-purple-500" />
+        </div>
+      ))}
+    </div>
+  );
+}
+function RenderActPorCurso({ s }) {
+  if (!s.porCurso.length)
+    return (
+      <p className="text-sm text-gray-400 text-center py-8">
+        No hay actividades dirigidas a cursos en este período
+      </p>
+    );
+  const max = s.porCurso[0].total;
+  return (
+    <div className="space-y-3">
+      {s.porCurso.map((c) => (
+        <div key={c.curso} className="flex items-center gap-3">
+          <span className="text-xs text-gray-700 w-28 shrink-0">{c.curso}</span>
+          <Bar value={c.total} max={max} color="bg-green-500" />
+        </div>
+      ))}
+    </div>
+  );
+}
+function RenderActPorMes({ s }) {
+  if (!s.porMes.length) return <Empty />;
+  const max = Math.max(...s.porMes.map((m) => m.total));
+  return (
+    <div className="space-y-2">
+      {s.porMes.map((m) => (
+        <div key={m.mes} className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 w-20 shrink-0">
+            {fmtMes(m.mes)}
+          </span>
+          <Bar value={m.total} max={max} color="bg-orange-400" />
+        </div>
+      ))}
+    </div>
+  );
+}
+function RenderActPorIdioma({ s }) {
+  if (!s.porIdioma.length) return <Empty />;
+  const max = s.porIdioma[0].total;
+  return (
+    <div className="space-y-3">
+      {s.porIdioma.map((i) => (
+        <div key={i.idioma} className="flex items-center gap-3">
+          <span className="text-xs text-gray-700 w-32 shrink-0 truncate">
+            {i.idioma}
+          </span>
+          <Bar value={i.total} max={max} color="bg-teal-500" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── página principal ── */
 export default function Estadisticas() {
   const [selected, setSelected] = useState(STATS[0].id);
@@ -572,6 +800,7 @@ export default function Estadisticas() {
   const loadRef = useRef(0);
 
   const stat = STATS.find((s) => s.id === selected);
+  const isActStat = selected.startsWith('act-');
 
   const load = useCallback(async () => {
     const tick = ++loadRef.current;
@@ -582,12 +811,13 @@ export default function Estadisticas() {
       const p = new URLSearchParams();
       if (desde) p.set('desde', desde);
       if (hasta) p.set('hasta', hasta);
-      if (stat.filters.includes('limit')) p.set('limit', limit);
+      if (!isActStat && stat.filters.includes('limit')) p.set('limit', limit);
 
-      const endpoint =
-        selected === 'libros-nunca'
-          ? '/estadisticas/libros-nunca-prestados'
-          : `/estadisticas/${selected}`;
+      const endpoint = isActStat
+        ? '/actividades'
+        : selected === 'libros-nunca'
+        ? '/estadisticas/libros-nunca-prestados'
+        : `/estadisticas/${selected}`;
       const { data: d } = await api.get(`${endpoint}?${p}`);
       if (tick === loadRef.current) setData(d);
     } catch (err) {
@@ -596,20 +826,86 @@ export default function Estadisticas() {
     } finally {
       if (tick === loadRef.current) setLoading(false);
     }
-  }, [selected, desde, hasta, limit, stat]);
+  }, [selected, desde, hasta, limit, stat, isActStat]);
 
   useEffect(() => {
     if (rangoIdx !== 5) load();
   }, [load]);
 
+  const actStats = useMemo(() => {
+    const acts = Array.isArray(data) && isActStat ? data : [];
+    const total = acts.length;
+    const totalMin = acts.reduce((acc, a) => acc + parseDurMin(a.duracion), 0);
+    const mediaMin = total > 0 ? Math.round(totalMin / total) : 0;
+
+    const tipoMap = {};
+    acts.forEach((a) => { const k = a.tipo || 'otro'; tipoMap[k] = (tipoMap[k] || 0) + 1; });
+    const porTipo = Object.entries(tipoMap)
+      .map(([tipo, t]) => ({ tipo, label: TIPO_LABEL[tipo] ?? tipo, total: t }))
+      .sort((a, b) => b.total - a.total);
+
+    const pypMap = {};
+    acts.filter((a) => a.tipo === 'PYP').forEach((a) => {
+      const k = a.subtipo || 'Sin línea'; pypMap[k] = (pypMap[k] || 0) + 1;
+    });
+    const pypLineas = Object.entries(pypMap)
+      .map(([subtipo, t]) => ({ subtipo, total: t }))
+      .sort((a, b) => b.total - a.total);
+
+    const destMap = {};
+    acts.forEach((a) => { const k = a.destinatario || 'sin especificar'; destMap[k] = (destMap[k] || 0) + 1; });
+    const porDest = Object.entries(destMap)
+      .map(([dest, t]) => ({ dest, total: t }))
+      .sort((a, b) => b.total - a.total);
+
+    const cursoMap = {};
+    acts.filter((a) => a.destinatario === 'curso').forEach((a) => {
+      const k = a.curso_destinatario || 'Sin curso'; cursoMap[k] = (cursoMap[k] || 0) + 1;
+    });
+    const porCurso = Object.entries(cursoMap)
+      .map(([curso, t]) => ({ curso, total: t }))
+      .sort((a, b) => b.total - a.total);
+
+    const mesMap = {};
+    acts.forEach((a) => {
+      if (!a.fecha) return;
+      const mes = a.fecha.split('T')[0].slice(0, 7);
+      mesMap[mes] = (mesMap[mes] || 0) + 1;
+    });
+    const porMes = Object.entries(mesMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mes, t]) => ({ mes, total: t }));
+
+    const idiomaMap = {};
+    acts.forEach((a) => {
+      const k = a.idioma || 'Sin especificar';
+      idiomaMap[k] = (idiomaMap[k] || 0) + 1;
+    });
+    const porIdioma = Object.entries(idiomaMap)
+      .map(([idioma, t]) => ({ idioma, total: t }))
+      .sort((a, b) => b.total - a.total);
+
+    return { total, totalMin, mediaMin, porTipo, pypLineas, porDest, porCurso, porMes, porIdioma };
+  }, [data, isActStat]);
+
   const renderResult = () => {
     if (loading)
-      return (
-        <p className="text-sm text-gray-400 text-center py-8">Cargando...</p>
-      );
+      return <p className="text-sm text-gray-400 text-center py-8">Cargando...</p>;
     if (error)
       return <p className="text-sm text-red-500 text-center py-8">{error}</p>;
     if (!data) return null;
+    if (isActStat) {
+      switch (selected) {
+        case 'act-resumen': return <RenderActResumen s={actStats} />;
+        case 'act-por-tipo': return <RenderActPorTipo s={actStats} />;
+        case 'act-pyp-lineas': return <RenderActPypLineas s={actStats} />;
+        case 'act-por-destinatario': return <RenderActPorDestinatario s={actStats} />;
+        case 'act-por-curso': return <RenderActPorCurso s={actStats} />;
+        case 'act-por-mes': return <RenderActPorMes s={actStats} />;
+        case 'act-por-idioma': return <RenderActPorIdioma s={actStats} />;
+        default: return null;
+      }
+    }
     switch (selected) {
       case 'libros-top':
         return <RenderLibrosTop data={data} />;
@@ -684,6 +980,13 @@ export default function Estadisticas() {
             return <Icon size={20} className={stat.color} />;
           })()}
           <h2 className="text-xl font-bold text-gray-800">{stat.label}</h2>
+          <button
+            onClick={load}
+            title="Recargar"
+            className="ml-auto text-gray-400 hover:text-brand-600 transition-colors"
+          >
+            <RefreshCw size={15} />
+          </button>
         </div>
 
         {/* Filtros */}

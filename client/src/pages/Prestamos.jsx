@@ -93,7 +93,9 @@ export default function Prestamos() {
     load();
     api.get('/usuarios').then(({ data }) => {
       setUsuariosGestion(
-        data.filter((u) => ['profesorado', 'personal'].includes(u.rol) && u.activo)
+        data.filter(
+          (u) => ['profesorado', 'personal'].includes(u.rol) && u.activo
+        )
       );
     });
   }, []);
@@ -431,7 +433,6 @@ export default function Prestamos() {
     setLoteResultado(null);
     setModalLote(true);
   };
-
 
   const handleLoteCantidad = (val) => {
     const n = parseInt(val, 10);
@@ -826,7 +827,7 @@ export default function Prestamos() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
-              <h2 className="text-lg font-bold">Nuevo préstamo</h2>
+              <h2 className="text-lg font-medium">Nuevo préstamo</h2>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Usuario QR */}
@@ -1047,7 +1048,9 @@ export default function Prestamos() {
               <>
                 <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
                   <h2 className="text-lg font-bold">Lote creado</h2>
-                  <p className="text-sm text-white/70 font-mono mt-0.5">{loteResultado.lote}</p>
+                  <p className="text-sm text-white/70 font-mono mt-0.5">
+                    {loteResultado.lote}
+                  </p>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   {loteResultado.creados.length} préstamo
@@ -1141,10 +1144,17 @@ export default function Prestamos() {
                     >
                       <option value="">Seleccionar usuario...</option>
                       {['profesorado', 'personal'].map((rol) => {
-                        const grupo = usuariosGestion.filter((u) => u.rol === rol);
+                        const grupo = usuariosGestion.filter(
+                          (u) => u.rol === rol
+                        );
                         if (!grupo.length) return null;
                         return (
-                          <optgroup key={rol} label={rol === 'profesorado' ? 'Profesorado' : 'Personal'}>
+                          <optgroup
+                            key={rol}
+                            label={
+                              rol === 'profesorado' ? 'Profesorado' : 'Personal'
+                            }
+                          >
                             {grupo.map((u) => (
                               <option key={u.id} value={u.codigo}>
                                 {u.apellidos}, {u.nombre} · {u.codigo}
@@ -1155,7 +1165,9 @@ export default function Prestamos() {
                       })}
                     </select>
                     {loteUsuarioError && (
-                      <p className="text-red-500 text-xs mt-1">{loteUsuarioError}</p>
+                      <p className="text-red-500 text-xs mt-1">
+                        {loteUsuarioError}
+                      </p>
                     )}
                   </div>
 

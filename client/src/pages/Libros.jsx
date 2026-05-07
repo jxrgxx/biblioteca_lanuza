@@ -174,15 +174,18 @@ export default function Libros() {
       const nb = parseInt(String(vb).replace(/^L_/i, ''), 10);
       cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
     } else if (sortCol === 'volumen') {
-      const sa = String(va).trim(); const sb = String(vb).trim();
+      const sa = String(va).trim();
+      const sb = String(vb).trim();
       const aVacio = sa === '' || sa === null;
       const bVacio = sb === '' || sb === null;
-      const na = parseFloat(sa); const nb = parseFloat(sb);
+      const na = parseFloat(sa);
+      const nb = parseFloat(sb);
       const aNum = !aVacio && !isNaN(na);
       const bNum = !bVacio && !isNaN(nb);
       // orden: vacío → número → texto
-      const rango = (vacio, esNum) => vacio ? 0 : esNum ? 1 : 2;
-      const ra = rango(aVacio, aNum); const rb = rango(bVacio, bNum);
+      const rango = (vacio, esNum) => (vacio ? 0 : esNum ? 1 : 2);
+      const ra = rango(aVacio, aNum);
+      const rb = rango(bVacio, bNum);
       if (ra !== rb) cmp = ra - rb;
       else if (aNum && bNum) cmp = na - nb;
       else cmp = sa.localeCompare(sb, 'es', { sensitivity: 'base' });
@@ -294,7 +297,9 @@ export default function Libros() {
     e.preventDefault();
     setErrorEstanteria('');
     try {
-      await api.put(`/estanterias/${editandoEstanteria.id}`, { nombre: editNombreEstanteria });
+      await api.put(`/estanterias/${editandoEstanteria.id}`, {
+        nombre: editNombreEstanteria,
+      });
       setEditandoEstanteria(null);
       setEditNombreEstanteria('');
       loadEstanterias();
@@ -486,7 +491,11 @@ export default function Libros() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {librosPagina.map((l) => (
-              <tr key={l.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setFotoModal(l)}>
+              <tr
+                key={l.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => setFotoModal(l)}
+              >
                 <td className="px-4 py-3 font-mono text-xs">{l.codigo}</td>
                 <td className="px-4 py-3 font-medium">{l.titulo}</td>
                 <td className="px-4 py-3 text-gray-600">{l.autor || '—'}</td>
@@ -577,7 +586,7 @@ export default function Libros() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
-              <h2 className="text-lg font-bold">
+              <h2 className="text-lg font-medium">
                 {editing ? 'Editar libro' : 'Nuevo libro'}
               </h2>
             </div>
@@ -815,22 +824,47 @@ export default function Libros() {
               {estanterias.map((e) => (
                 <div key={e.id} className="rounded-lg hover:bg-gray-50">
                   {editandoEstanteria?.id === e.id ? (
-                    <form onSubmit={handleEditEstanteria} className="flex items-center gap-2 px-3 py-1.5">
+                    <form
+                      onSubmit={handleEditEstanteria}
+                      className="flex items-center gap-2 px-3 py-1.5"
+                    >
                       <input
                         autoFocus
                         value={editNombreEstanteria}
-                        onChange={(ev) => setEditNombreEstanteria(ev.target.value)}
+                        onChange={(ev) =>
+                          setEditNombreEstanteria(ev.target.value)
+                        }
                         className="flex-1 border border-brand-400 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                       />
-                      <button type="submit" className="text-brand-600 hover:text-brand-800 text-xs font-medium">Guardar</button>
-                      <button type="button" onClick={() => { setEditandoEstanteria(null); setErrorEstanteria(''); }} className="text-gray-400 hover:text-gray-600 text-xs">Cancelar</button>
+                      <button
+                        type="submit"
+                        className="text-brand-600 hover:text-brand-800 text-xs font-medium"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditandoEstanteria(null);
+                          setErrorEstanteria('');
+                        }}
+                        className="text-gray-400 hover:text-gray-600 text-xs"
+                      >
+                        Cancelar
+                      </button>
                     </form>
                   ) : (
                     <div className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm font-medium text-gray-700">{e.nombre}</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {e.nombre}
+                      </span>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => { setEditandoEstanteria(e); setEditNombreEstanteria(e.nombre); setErrorEstanteria(''); }}
+                          onClick={() => {
+                            setEditandoEstanteria(e);
+                            setEditNombreEstanteria(e.nombre);
+                            setErrorEstanteria('');
+                          }}
                           className="text-brand-500 hover:text-brand-700 text-xs"
                         >
                           Editar
@@ -891,14 +925,26 @@ export default function Libros() {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={fotoModal.nombre_foto ? `/uploads/${fotoModal.nombre_foto}` : '/portada-default.png'}
+              src={
+                fotoModal.nombre_foto
+                  ? `/uploads/${fotoModal.nombre_foto}`
+                  : '/portada-default.png'
+              }
               alt={fotoModal.titulo}
               className="w-full object-contain max-h-[70vh]"
-              onError={(e) => { e.target.src = '/portada-default.png'; }}
+              onError={(e) => {
+                e.target.src = '/portada-default.png';
+              }}
             />
             <div className="px-4 py-3 border-t border-gray-100">
-              <p className="font-semibold text-gray-800 text-sm truncate">{fotoModal.titulo}</p>
-              {fotoModal.autor && <p className="text-xs text-gray-400 truncate">{fotoModal.autor}</p>}
+              <p className="font-semibold text-gray-800 text-sm truncate">
+                {fotoModal.titulo}
+              </p>
+              {fotoModal.autor && (
+                <p className="text-xs text-gray-400 truncate">
+                  {fotoModal.autor}
+                </p>
+              )}
             </div>
           </div>
         </div>

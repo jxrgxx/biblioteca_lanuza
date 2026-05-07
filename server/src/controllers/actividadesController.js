@@ -23,8 +23,14 @@ exports.getEnums = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
+    const { desde, hasta } = req.query;
+    const conditions = [];
+    const params = [];
+    if (desde) { conditions.push('fecha >= ?'); params.push(desde); }
+    if (hasta) { conditions.push('fecha <= ?'); params.push(hasta); }
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [actividades] = await db.query(
-      'SELECT * FROM actividad ORDER BY fecha DESC'
+      `SELECT * FROM actividad${where} ORDER BY fecha DESC`, params
     );
     const [fotos] = await db.query('SELECT * FROM actividad_foto');
     const fotosMap = {};
