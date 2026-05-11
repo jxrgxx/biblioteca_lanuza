@@ -49,9 +49,16 @@ exports.solicitarReset = async (req, res) => {
         link,
       })
         .then(() => console.log(`[mailer] ✓ Email de reset enviado a ${email}`))
-        .catch(err => console.error(`[mailer] ✗ Error enviando reset a ${email}:`, err.message));
+        .catch((err) =>
+          console.error(
+            `[mailer] ✗ Error enviando reset a ${email}:`,
+            err.message
+          )
+        );
     } else {
-      console.log(`[reset] Solicitud para email desconocido: ${email} (ignorado)`);
+      console.log(
+        `[reset] Solicitud para email desconocido: ${email} (ignorado)`
+      );
     }
 
     // Misma respuesta siempre
@@ -71,7 +78,9 @@ exports.resetearPassword = async (req, res) => {
     if (!token || !password)
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     if (password.length < 6)
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+      return res
+        .status(400)
+        .json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
     const [rows] = await db.query(
       `SELECT pr.id, pr.id_usuario, pr.expires_at, u.email
@@ -82,17 +91,26 @@ exports.resetearPassword = async (req, res) => {
     );
 
     if (!rows.length)
-      return res.status(400).json({ error: 'El enlace no es válido o ya fue usado' });
+      return res
+        .status(400)
+        .json({ error: 'El enlace no es válido o ya fue usado' });
 
     const reset = rows[0];
 
     if (new Date() > new Date(reset.expires_at))
-      return res.status(400).json({ error: 'El enlace ha caducado. Solicita uno nuevo.' });
+      return res
+        .status(400)
+        .json({ error: 'El enlace ha caducado. Solicita uno nuevo.' });
 
     const hash = await bcrypt.hash(password, 10);
 
-    await db.query('UPDATE usuario SET password = ? WHERE id = ?', [hash, reset.id_usuario]);
-    await db.query('UPDATE password_reset SET usado = 1 WHERE id = ?', [reset.id]);
+    await db.query('UPDATE usuario SET password = ? WHERE id = ?', [
+      hash,
+      reset.id_usuario,
+    ]);
+    await db.query('UPDATE password_reset SET usado = 1 WHERE id = ?', [
+      reset.id,
+    ]);
 
     console.log(`[reset] ✓ Contraseña actualizada para ${reset.email}`);
 

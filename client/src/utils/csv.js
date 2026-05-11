@@ -30,7 +30,9 @@ export async function exportarCSV(datos, columnas, nombre) {
     try {
       const handle = await window.showSaveFilePicker({
         suggestedName: `${nombre}.csv`,
-        types: [{ description: 'Archivo CSV', accept: { 'text/csv': ['.csv'] } }],
+        types: [
+          { description: 'Archivo CSV', accept: { 'text/csv': ['.csv'] } },
+        ],
       });
       const writable = await handle.createWritable();
       await writable.write(blob);
@@ -117,12 +119,16 @@ export const COLS_ACTIVIDADES = [
   { key: 'tipo', label: 'Tipo' },
   { key: 'subtipo', label: 'Subtipo' },
   { key: 'idioma', label: 'Idioma' },
-  { key: 'duracion', label: 'Duración', fmt: (v) => v ? v.slice(0, 5) : '' },
+  { key: 'duracion', label: 'Duración', fmt: (v) => (v ? v.slice(0, 5) : '') },
   { key: 'destinatario', label: 'Destinatario' },
   { key: 'curso_destinatario', label: 'Curso' },
   { key: 'objetivos', label: 'Objetivos' },
   { key: 'reflexiones', label: 'Reflexiones' },
-  { key: 'fotos', label: 'Nº fotos', fmt: (v) => Array.isArray(v) ? v.length : 0 },
+  {
+    key: 'fotos',
+    label: 'Nº fotos',
+    fmt: (v) => (Array.isArray(v) ? v.length : 0),
+  },
 ];
 
 export const COLS_USUARIOS = [

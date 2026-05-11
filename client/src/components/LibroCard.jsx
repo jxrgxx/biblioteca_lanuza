@@ -9,7 +9,7 @@ const estadoStyles = {
 
 export default function LibroCard({ libro }) {
   const imgSrc = libro.nombre_foto
-    ? `/uploads/${libro.nombre_foto}`
+    ? `/uploads/fotos_portadas/${libro.nombre_foto}`
     : '/portada-default.png';
 
   return (

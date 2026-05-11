@@ -16,10 +16,17 @@ export default function Dashboard() {
   const [prestamos, setPrestamos] = useState([]);
   const today = new Date().toISOString().split('T')[0];
 
+  const inicioDeSemana = (() => {
+    const d = new Date();
+    const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+    d.setDate(d.getDate() - (dayOfWeek - 1));
+    return d.toISOString().split('T')[0];
+  })();
+
   const finDeSemana = (() => {
     const d = new Date();
-    const diff = 7 - (d.getDay() === 0 ? 7 : d.getDay()); // días hasta domingo
-    d.setDate(d.getDate() + diff);
+    const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+    d.setDate(d.getDate() + (7 - dayOfWeek));
     return d.toISOString().split('T')[0];
   })();
 
@@ -42,7 +49,7 @@ export default function Dashboard() {
       const estaSemana = activos.data
         .filter(
           (p) =>
-            p.fecha_devolucion_prevista >= today &&
+            p.fecha_devolucion_prevista >= inicioDeSemana &&
             p.fecha_devolucion_prevista <= finDeSemana
         )
         .sort((a, b) =>
@@ -100,27 +107,37 @@ export default function Dashboard() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
               <tr>
-                <th className="px-6 py-3 text-left">Alumno / Profesor</th>
-                <th className="px-6 py-3 text-left">Libro</th>
-                <th className="px-6 py-3 text-left">F. inicio</th>
-                <th className="px-6 py-3 text-left">Dev. prevista</th>
-                <th className="px-6 py-3 text-left">Dev. real</th>
-                <th className="px-6 py-3 text-left">Devuelto</th>
+                <th className="px-4 py-3 text-left">Código</th>
+                <th className="px-4 py-3 text-left">Lote</th>
+                <th className="px-4 py-3 text-left">Usuario</th>
+                <th className="px-4 py-3 text-left">Libro</th>
+                <th className="px-4 py-3 text-left">Código libro</th>
+                <th className="px-4 py-3 text-left">F. Inicio</th>
+                <th className="px-4 py-3 text-left">F. Dev. prevista</th>
+                <th className="px-4 py-3 text-left">F. Dev. real</th>
+                <th className="px-4 py-3 text-left">Devuelto</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {prestamos.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3">
+                  <td className="px-4 py-3 font-mono text-xs tracking-widest text-gray-500">
+                    {p.codigo || '—'}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                    {p.codigo_lote || '—'}
+                  </td>
+                  <td className="px-4 py-3">
                     {p.usuario_nombre} {p.usuario_apellidos}
                   </td>
-                  <td className="px-6 py-3">{p.libro_titulo}</td>
-                  <td className="px-6 py-3">{fmt(p.fecha_inicio)}</td>
-                  <td className="px-6 py-3">
-                    {fmt(p.fecha_devolucion_prevista)}
+                  <td className="px-4 py-3">{p.libro_titulo}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                    {p.libro_codigo || '—'}
                   </td>
-                  <td className="px-6 py-3">{fmt(p.fecha_devolucion_real)}</td>
-                  <td className="px-6 py-3">
+                  <td className="px-4 py-3">{fmt(p.fecha_inicio)}</td>
+                  <td className="px-4 py-3">{fmt(p.fecha_devolucion_prevista) || '—'}</td>
+                  <td className="px-4 py-3">{fmt(p.fecha_devolucion_real) || '—'}</td>
+                  <td className="px-4 py-3">
                     {p.devuelto ? (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                         Sí
@@ -136,7 +153,7 @@ export default function Dashboard() {
               {!prestamos.length && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={9}
                     className="px-6 py-6 text-center text-gray-400"
                   >
                     Ninguna devolución prevista esta semana

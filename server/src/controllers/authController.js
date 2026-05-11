@@ -54,10 +54,10 @@ exports.register = async (req, res) => {
       [nombre, apellidos, email, hash, rol, ubicacion || null]
     );
     const id = result.insertId;
-    await db.query(
-      "UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?",
-      [id, id]
-    );
+    await db.query("UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?", [
+      id,
+      id,
+    ]);
     const codigo = `U_${id}`;
     const token = jwt.sign(
       {
@@ -120,6 +120,9 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid)
       return res.status(401).json({ error: 'Credenciales incorrectas' });
+
+    if (!user.activo)
+      return res.status(403).json({ error: 'Cuenta desactivada. Contacta con el bibliotecario.' });
 
     const token = jwt.sign(
       {

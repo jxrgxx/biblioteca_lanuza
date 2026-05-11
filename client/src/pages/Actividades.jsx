@@ -852,7 +852,7 @@ export default function Actividades() {
 
       {/* Modal crear */}
       {modal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">Nueva actividad</h2>
@@ -882,7 +882,7 @@ export default function Actividades() {
 
       {/* Modal editar */}
       {editModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-bold">Editar actividad</h2>
@@ -927,7 +927,7 @@ export default function Actividades() {
                     {editFotos.map((f) => (
                       <div key={f.id} className="relative group">
                         <img
-                          src={`/uploads/${f.nombre_foto}`}
+                          src={`/uploads/fotos_actividades/${f.nombre_foto}`}
                           alt=""
                           className="w-full h-24 object-cover rounded-lg"
                         />
@@ -1034,11 +1034,11 @@ export default function Actividades() {
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setLightbox(`/uploads/${f.nombre_foto}`)}
+                      onClick={() => setLightbox(`/uploads/fotos_actividades/${f.nombre_foto}`)}
                       className="block w-full aspect-square overflow-hidden rounded-lg focus:outline-none"
                     >
                       <img
-                        src={`/uploads/${f.nombre_foto}`}
+                        src={`/uploads/fotos_actividades/${f.nombre_foto}`}
                         alt=""
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                       />

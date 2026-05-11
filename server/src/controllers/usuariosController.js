@@ -1,7 +1,8 @@
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 
-const CAMPOS = 'id, codigo, nombre, apellidos, email, rol, ubicacion, activo, fecha_alta, fecha_baja';
+const CAMPOS =
+  'id, codigo, nombre, apellidos, email, rol, ubicacion, activo, fecha_alta, fecha_baja';
 
 exports.getAll = async (req, res) => {
   try {
@@ -59,10 +60,10 @@ exports.create = async (req, res) => {
       [nombre, apellidos, email, hash, rol, ubicacion || null]
     );
     const newId = result.insertId;
-    await db.query(
-      "UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?",
-      [newId, newId]
-    );
+    await db.query("UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?", [
+      newId,
+      newId,
+    ]);
     const [rows] = await db.query(
       'SELECT id, codigo, nombre, apellidos, email, rol, ubicacion FROM usuario WHERE id = ?',
       [newId]
@@ -114,7 +115,9 @@ exports.remove = async (req, res) => {
       [req.params.id]
     );
     if (activos.length)
-      return res.status(409).json({ error: 'No se puede eliminar el usuario porque tiene préstamos activos' });
+      return res.status(409).json({
+        error: 'No se puede eliminar el usuario porque tiene préstamos activos',
+      });
     await db.query('DELETE FROM usuario WHERE id = ?', [req.params.id]);
     res.json({ message: 'Usuario eliminado' });
   } catch (err) {
@@ -139,7 +142,11 @@ exports.toggleActivo = async (req, res) => {
     const { activo } = req.body;
     await db.query(
       'UPDATE usuario SET activo = ?, fecha_baja = ? WHERE id = ?',
-      [activo ? 1 : 0, activo ? null : new Date().toISOString().slice(0, 10), req.params.id]
+      [
+        activo ? 1 : 0,
+        activo ? null : new Date().toISOString().slice(0, 10),
+        req.params.id,
+      ]
     );
     res.json({ activo: activo ? 1 : 0 });
   } catch (err) {
@@ -161,7 +168,9 @@ exports.importar = async (req, res) => {
     for (const u of usuarios) {
       const { nombre, apellidos, email } = u;
       if (!nombre || !apellidos || !email)
-        throw new Error(`Fila incompleta: "${nombre || ''}" "${apellidos || ''}" "${email || ''}"`);
+        throw new Error(
+          `Fila incompleta: "${nombre || ''}" "${apellidos || ''}" "${email || ''}"`
+        );
       if (!email.toLowerCase().endsWith('@juandelanuza.org'))
         throw new Error(`Email inválido: ${email}`);
       const [result] = await conn.query(
@@ -169,14 +178,20 @@ exports.importar = async (req, res) => {
         [nombre, apellidos, email, hash, rol, ubicacion || null]
       );
       const newId = result.insertId;
-      await conn.query("UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?", [newId, newId]);
+      await conn.query(
+        "UPDATE usuario SET codigo = CONCAT('U_', ?) WHERE id = ?",
+        [newId, newId]
+      );
     }
     await conn.commit();
     res.json({ importados: usuarios.length });
   } catch (err) {
     await conn.rollback();
     if (err.code === 'ER_DUP_ENTRY')
-      return res.status(409).json({ error: 'Uno o más emails ya están registrados — no se ha importado ningún usuario' });
+      return res.status(409).json({
+        error:
+          'Uno o más emails ya están registrados — no se ha importado ningún usuario',
+      });
     res.status(400).json({ error: err.message });
   } finally {
     conn.release();
@@ -185,10 +200,18 @@ exports.importar = async (req, res) => {
 
 exports.subidaDeCurso = async (req, res) => {
   const CURSOS = [
-    '1º Primaria', '2º Primaria', '3º Primaria', '4º Primaria',
-    '5º Primaria', '6º Primaria',
-    '1º ESO', '2º ESO', '3º ESO', '4º ESO',
-    '1º Bach', '2º Bach',
+    '1º Primaria',
+    '2º Primaria',
+    '3º Primaria',
+    '4º Primaria',
+    '5º Primaria',
+    '6º Primaria',
+    '1º ESO',
+    '2º ESO',
+    '3º ESO',
+    '4º ESO',
+    '1º Bach',
+    '2º Bach',
   ];
 
   try {
@@ -201,7 +224,9 @@ exports.subidaDeCurso = async (req, res) => {
     );
 
     // CASE para avanzar ubicacion (excluye 2º Bach → se queda igual por ELSE)
-    const whenClauses = CURSOS.slice(0, -1).map(() => 'WHEN ? THEN ?').join(' ');
+    const whenClauses = CURSOS.slice(0, -1)
+      .map(() => 'WHEN ? THEN ?')
+      .join(' ');
     const params = CURSOS.slice(0, -1).flatMap((c, i) => [c, CURSOS[i + 1]]);
 
     const hoy = new Date().toISOString().slice(0, 10);
@@ -215,7 +240,9 @@ exports.subidaDeCurso = async (req, res) => {
       [hoy, ...params]
     );
 
-    console.log(`[subida de curso] ${avanzados} avanzados · ${graduados} graduados`);
+    console.log(
+      `[subida de curso] ${avanzados} avanzados · ${graduados} graduados`
+    );
     res.json({ avanzados, graduados });
   } catch (err) {
     res.status(500).json({ error: err.message });

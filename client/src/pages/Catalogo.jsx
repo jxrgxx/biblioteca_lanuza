@@ -28,7 +28,7 @@ export default function Catalogo() {
   const [filtroIdioma, setFiltroIdioma] = useState('');
   const [filtroEditorial, setFiltroEditorial] = useState('');
   const [filtroEstanteria, setFiltroEstanteria] = useState('');
-  const [sortBy, setSortBy] = useState('titulo');
+  const [sortBy, setSortBy] = useState('');
   const [order, setOrder] = useState('ASC');
 
   // Carga listas de filtros una sola vez desde endpoints DISTINCT
@@ -92,7 +92,7 @@ export default function Catalogo() {
     setFiltroIdioma('');
     setFiltroEditorial('');
     setFiltroEstanteria('');
-    setSortBy('titulo');
+    setSortBy('');
     setOrder('ASC');
   };
 
@@ -250,9 +250,10 @@ export default function Catalogo() {
             onChange={(e) => setSortBy(e.target.value)}
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="titulo">Ordenar por título</option>
-            <option value="autor">Ordenar por autor</option>
-            <option value="editorial">Ordenar por editorial</option>
+            <option value="">Ordenar por</option>
+            <option value="titulo">Título</option>
+            <option value="autor">Autor</option>
+            <option value="editorial">Editorial</option>
           </select>
 
           {/* ASC / DESC */}
@@ -263,11 +264,11 @@ export default function Catalogo() {
           >
             {order === 'ASC' ? (
               <>
-                ↑ <span className="hidden sm:inline">A–Z</span>
+                <span className="hidden sm:inline">A - Z</span>
               </>
             ) : (
               <>
-                ↓ <span className="hidden sm:inline">Z–A</span>
+                <span className="hidden sm:inline">Z - A</span>
               </>
             )}
           </button>

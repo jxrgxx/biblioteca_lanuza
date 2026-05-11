@@ -6,7 +6,7 @@ const isPersonal = require('../middleware/isPersonal');
 const ctrl = require('../controllers/actividadesController');
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '../../uploads'),
+  destination: path.join(__dirname, '../../uploads/fotos_actividades'),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `actividad_${req.params.id}_${Date.now()}${ext}`);

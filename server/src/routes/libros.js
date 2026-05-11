@@ -6,7 +6,7 @@ const isPersonal = require('../middleware/isPersonal');
 const ctrl = require('../controllers/librosController');
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '../../uploads'),
+  destination: path.join(__dirname, '../../uploads/fotos_portadas'),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const raw = (req.query.nombre || 'foto').replace(/[^a-zA-Z0-9_\-]/g, '_');

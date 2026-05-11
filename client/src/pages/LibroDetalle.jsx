@@ -17,6 +17,7 @@ import {
   Ban,
 } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const estadoConfig = {
   disponible: {
@@ -44,6 +45,7 @@ const estadoConfig = {
 export default function LibroDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [libro, setLibro] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -172,7 +174,7 @@ export default function LibroDetalle() {
               <img
                 src={
                   libro.nombre_foto
-                    ? `/uploads/${libro.nombre_foto}`
+                    ? `/uploads/fotos_portadas/${libro.nombre_foto}`
                     : '/portada-default.png'
                 }
                 onError={(e) => {
@@ -240,18 +242,16 @@ export default function LibroDetalle() {
                         fgColor="#1e293b"
                       />
                     </div>
-                    <button
-                      onClick={imprimirEtiqueta}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-brand-700 text-white rounded-xl text-xs font-bold hover:bg-brand-800 transition-all active:scale-95"
-                    >
-                      🖨️ Imprimir etiqueta
-                    </button>
+                    {(user?.rol === 'personal' || user?.rol === 'biblioteca') && (
+                      <button
+                        onClick={imprimirEtiqueta}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-brand-700 text-white rounded-xl text-xs font-bold hover:bg-brand-800 transition-all active:scale-95"
+                      >
+                        🖨️ Imprimir etiqueta
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-slate-100 text-slate-400 text-[10px] italic">
-                * Los préstamos tienen una duración de 15 días naturales.
               </div>
               <iframe id="iframe-impresion" style={{ display: 'none' }} />
             </div>

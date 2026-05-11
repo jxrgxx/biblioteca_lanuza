@@ -11,6 +11,7 @@ import {
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
 import { exportarCSV, ordenarPor, COLS_LIBROS } from '../utils/csv';
+import { QRCodeSVG } from 'qrcode.react';
 
 const ESTADOS = ['disponible', 'prestado', 'extraviado', 'no disponible'];
 
@@ -78,6 +79,41 @@ export default function Libros() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef(null);
   const [fotoModal, setFotoModal] = useState(null); // libro seleccionado para ver foto
+  const iframeRef = useRef(null);
+
+  const imprimirEtiqueta = (libro) => {
+    const qrEl = document.getElementById(`qr-libros-${libro.id}`);
+    if (!qrEl) return;
+    const doc = iframeRef.current.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <html>
+        <head>
+          <title>Etiqueta_${libro.codigo}</title>
+          <style>
+            @font-face { font-family: 'Essai'; src: url('/fonts/Essai.ttf') format('truetype'); }
+            @page { size: 50mm 50mm; margin: 0; }
+            body { font-family: Essai, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+            .colegio { font-size: 8px; font-weight: bold; text-transform: uppercase; color: #7F252E; }
+            .titulo { font-size: 10px; font-weight: bold; margin: 2px 0; max-width: 90%; }
+            .codigo { font-size: 9px; font-family: monospace; }
+            svg { width: 120px !important; height: 120px !important; }
+          </style>
+        </head>
+        <body>
+          <div class="colegio">Colegio Juan de Lanuza</div><br>
+          ${qrEl.innerHTML}<br>
+          <div class="titulo">${libro.titulo}</div>
+          <div class="codigo">${libro.codigo}</div>
+        </body>
+      </html>
+    `);
+    doc.close();
+    setTimeout(() => {
+      iframeRef.current.contentWindow.focus();
+      iframeRef.current.contentWindow.print();
+    }, 800);
+  };
 
   const [modalEstanterias, setModalEstanterias] = useState(false);
   const [nuevaEstanteria, setNuevaEstanteria] = useState('');
@@ -250,7 +286,7 @@ export default function Libros() {
       if (fotoFile) {
         const fd = new FormData();
         fd.append('foto', fotoFile);
-        const nombreBase = form.nombre_foto || form.titulo;
+        const nombreBase = form.nombre_foto || (form.volumen ? `${form.titulo}_${form.volumen}` : form.titulo);
         await api.post(
           `/libros/${libro.id}/foto?nombre=${encodeURIComponent(nombreBase)}`,
           fd
@@ -583,7 +619,7 @@ export default function Libros() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">
@@ -718,7 +754,7 @@ export default function Libros() {
                   Nombre archivo foto
                 </label>
                 <input
-                  placeholder="Sin extensión - vacío = usa el título"
+                  placeholder="si se deja vacio, se usara nombre del libro + volumen"
                   value={form.nombre_foto}
                   onChange={(e) => set('nombre_foto', e.target.value)}
                   readOnly={!!editing && !fotoFile}
@@ -764,7 +800,7 @@ export default function Libros() {
                       src={
                         fotoFile
                           ? URL.createObjectURL(fotoFile)
-                          : `/uploads/${editing.nombre_foto}`
+                          : `/uploads/fotos_portadas/${editing.nombre_foto}`
                       }
                       alt="preview"
                       className="h-16 w-12 object-cover rounded-lg border border-gray-200"
@@ -808,7 +844,7 @@ export default function Libros() {
       )}
 
       {modalEstanterias && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-bold text-gray-800">
               Gestionar estanterías
@@ -914,7 +950,7 @@ export default function Libros() {
         </div>
       )}
 
-      {/* Lightbox foto */}
+      {/* Modal libro */}
       {fotoModal && (
         <div
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
@@ -927,11 +963,11 @@ export default function Libros() {
             <img
               src={
                 fotoModal.nombre_foto
-                  ? `/uploads/${fotoModal.nombre_foto}`
+                  ? `/uploads/fotos_portadas/${fotoModal.nombre_foto}`
                   : '/portada-default.png'
               }
               alt={fotoModal.titulo}
-              className="w-full object-contain max-h-[70vh]"
+              className="w-full object-contain max-h-[50vh]"
               onError={(e) => {
                 e.target.src = '/portada-default.png';
               }}
@@ -946,9 +982,34 @@ export default function Libros() {
                 </p>
               )}
             </div>
+            <div className="px-4 pb-4 flex items-center gap-4">
+              <div
+                id={`qr-libros-${fotoModal.id}`}
+                className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm shrink-0"
+              >
+                <QRCodeSVG
+                  value={fotoModal.codigo}
+                  size={90}
+                  level="H"
+                  fgColor="#1e293b"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-xs font-mono text-gray-500">
+                  {fotoModal.codigo}
+                </p>
+                <button
+                  onClick={() => imprimirEtiqueta(fotoModal)}
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-brand-700 text-white rounded-xl text-xs font-bold hover:bg-brand-800 transition-all"
+                >
+                  🖨️ Imprimir etiqueta
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
+      <iframe ref={iframeRef} style={{ display: 'none' }} title="impresion" />
 
       <Toast toast={toast} />
     </div>

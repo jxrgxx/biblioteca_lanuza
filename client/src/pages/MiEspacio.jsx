@@ -48,6 +48,7 @@ export default function MiEspacio() {
 
   const [showActual, setShowActual] = useState(false);
   const [showNueva, setShowNueva] = useState(false);
+  const [showConfirmar, setShowConfirmar] = useState(false);
   const [passMsg, setPassMsg] = useState(null);
   const [passLoading, setPassLoading] = useState(false);
 
@@ -424,9 +425,9 @@ export default function MiEspacio() {
                     },
                     {
                       key: 'confirmar',
-                      label: 'Confirmar nueva',
-                      show: showNueva,
-                      toggle: null,
+                      label: 'Confirmar nueva contraseña',
+                      show: showConfirmar,
+                      toggle: () => setShowConfirmar((v) => !v),
                       autocomplete: 'new-password',
                     },
                   ].map(({ key, label, show, toggle, autocomplete }) => (

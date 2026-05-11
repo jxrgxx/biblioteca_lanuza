@@ -11,8 +11,7 @@ exports.getEnums = async (req, res) => {
          AND COLUMN_NAME  = 'tipo'`
     );
     // COLUMN_TYPE → "enum('PYP','escritura_creativa','indagacion')"
-    const tipos = tipoRow.COLUMN_TYPE
-      .replace(/^enum\(|\)$/g, '')
+    const tipos = tipoRow.COLUMN_TYPE.replace(/^enum\(|\)$/g, '')
       .split(',')
       .map((v) => v.replace(/'/g, '').trim());
     res.json({ tipos });
@@ -26,11 +25,18 @@ exports.getAll = async (req, res) => {
     const { desde, hasta } = req.query;
     const conditions = [];
     const params = [];
-    if (desde) { conditions.push('fecha >= ?'); params.push(desde); }
-    if (hasta) { conditions.push('fecha <= ?'); params.push(hasta); }
+    if (desde) {
+      conditions.push('fecha >= ?');
+      params.push(desde);
+    }
+    if (hasta) {
+      conditions.push('fecha <= ?');
+      params.push(hasta);
+    }
     const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
     const [actividades] = await db.query(
-      `SELECT * FROM actividad${where} ORDER BY fecha DESC`, params
+      `SELECT * FROM actividad${where} ORDER BY fecha DESC`,
+      params
     );
     const [fotos] = await db.query('SELECT * FROM actividad_foto');
     const fotosMap = {};
@@ -67,14 +73,38 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { nombre, fecha, tipo, subtipo, idioma, duracion, destinatario, curso_destinatario, objetivos } = req.body;
+    const {
+      nombre,
+      fecha,
+      tipo,
+      subtipo,
+      idioma,
+      duracion,
+      destinatario,
+      curso_destinatario,
+      objetivos,
+    } = req.body;
     if (!nombre || !fecha || !tipo || !destinatario)
-      return res.status(400).json({ error: 'nombre, fecha, tipo y destinatario son obligatorios' });
+      return res
+        .status(400)
+        .json({ error: 'nombre, fecha, tipo y destinatario son obligatorios' });
     const [result] = await db.query(
       'INSERT INTO actividad (nombre, fecha, tipo, subtipo, idioma, duracion, destinatario, curso_destinatario, objetivos) VALUES (?,?,?,?,?,?,?,?,?)',
-      [nombre, fecha, tipo, subtipo || null, idioma || null, duracion || null, destinatario, curso_destinatario || null, objetivos || null]
+      [
+        nombre,
+        fecha,
+        tipo,
+        subtipo || null,
+        idioma || null,
+        duracion || null,
+        destinatario,
+        curso_destinatario || null,
+        objetivos || null,
+      ]
     );
-    const [rows] = await db.query('SELECT * FROM actividad WHERE id = ?', [result.insertId]);
+    const [rows] = await db.query('SELECT * FROM actividad WHERE id = ?', [
+      result.insertId,
+    ]);
     rows[0].fotos = [];
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -84,16 +114,46 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const { nombre, fecha, tipo, subtipo, idioma, duracion, destinatario, curso_destinatario, objetivos, reflexiones } = req.body;
-    const [check] = await db.query('SELECT id FROM actividad WHERE id = ?', [req.params.id]);
+    const {
+      nombre,
+      fecha,
+      tipo,
+      subtipo,
+      idioma,
+      duracion,
+      destinatario,
+      curso_destinatario,
+      objetivos,
+      reflexiones,
+    } = req.body;
+    const [check] = await db.query('SELECT id FROM actividad WHERE id = ?', [
+      req.params.id,
+    ]);
     if (!check.length)
       return res.status(404).json({ error: 'Actividad no encontrada' });
     await db.query(
       'UPDATE actividad SET nombre=?, fecha=?, tipo=?, subtipo=?, idioma=?, duracion=?, destinatario=?, curso_destinatario=?, objetivos=?, reflexiones=? WHERE id=?',
-      [nombre, fecha, tipo, subtipo || null, idioma || null, duracion || null, destinatario, curso_destinatario || null, objetivos || null, reflexiones || null, req.params.id]
+      [
+        nombre,
+        fecha,
+        tipo,
+        subtipo || null,
+        idioma || null,
+        duracion || null,
+        destinatario,
+        curso_destinatario || null,
+        objetivos || null,
+        reflexiones || null,
+        req.params.id,
+      ]
     );
-    const [rows] = await db.query('SELECT * FROM actividad WHERE id = ?', [req.params.id]);
-    const [fotos] = await db.query('SELECT * FROM actividad_foto WHERE id_actividad = ?', [req.params.id]);
+    const [rows] = await db.query('SELECT * FROM actividad WHERE id = ?', [
+      req.params.id,
+    ]);
+    const [fotos] = await db.query(
+      'SELECT * FROM actividad_foto WHERE id_actividad = ?',
+      [req.params.id]
+    );
     rows[0].fotos = fotos;
     res.json(rows[0]);
   } catch (err) {
@@ -113,7 +173,11 @@ exports.remove = async (req, res) => {
       [req.params.id]
     );
     fotos.forEach((f) => {
-      const fotoPath = path.join(__dirname, '../../uploads', f.nombre_foto);
+      const fotoPath = path.join(
+        __dirname,
+        '../../uploads/fotos_actividades',
+        f.nombre_foto
+      );
       if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
     });
     await db.query('DELETE FROM actividad WHERE id = ?', [req.params.id]);
@@ -154,7 +218,11 @@ exports.deleteFoto = async (req, res) => {
     );
     if (!rows.length)
       return res.status(404).json({ error: 'Foto no encontrada' });
-    const fotoPath = path.join(__dirname, '../../uploads', rows[0].nombre_foto);
+    const fotoPath = path.join(
+      __dirname,
+      '../../uploads/fotos_actividades',
+      rows[0].nombre_foto
+    );
     if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
     await db.query('DELETE FROM actividad_foto WHERE id = ?', [
       req.params.fotoId,

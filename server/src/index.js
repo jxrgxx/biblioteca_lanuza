@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { verificarConexion } = require('./services/mailer');
-const { iniciarCron }       = require('./jobs/recordatorios');
+const { iniciarCron } = require('./jobs/recordatorios');
 
 const app = express();
 
@@ -36,5 +36,5 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
   await verificarConexion(); // comprueba SMTP al arrancar (no bloquea si falla)
-  iniciarCron();             // activa el cron de recordatorios diarios
+  iniciarCron(); // activa el cron de recordatorios diarios
 });
