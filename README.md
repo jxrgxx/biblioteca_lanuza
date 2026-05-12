@@ -1,22 +1,6 @@
 # Biblioteca Juan de Lanuza
 
-Aplicación web completa para la gestión de la biblioteca del Colegio Juan de Lanuza. Permite gestionar el catálogo de libros, préstamos, usuarios y estadísticas de uso, con un catálogo público accesible sin registro.
-
----
-
-## Índice
-
-1. [Tecnologías](#tecnologías)
-2. [Arquitectura](#arquitectura)
-3. [Estructura de carpetas](#estructura-de-carpetas)
-4. [Instalación y arranque en local](#instalación-y-arranque-en-local)
-5. [Variables de entorno](#variables-de-entorno)
-6. [Sistema de roles](#sistema-de-roles)
-7. [Rutas del cliente](#rutas-del-cliente)
-8. [API REST — Endpoints](#api-rest--endpoints)
-9. [Base de datos](#base-de-datos)
-10. [Funcionalidades destacadas](#funcionalidades-destacadas)
-11. [Despliegue en producción](#despliegue-en-producción)
+Aplicación web para la gestión de la biblioteca del Colegio Juan de Lanuza. Catálogo público de libros, gestión de préstamos, usuarios, actividades y estadísticas de uso.
 
 ---
 
@@ -36,18 +20,18 @@ Aplicación web completa para la gestión de la biblioteca del Colegio Juan de L
 
 ### Backend
 
-| Paquete            | Uso                                |
-| ------------------ | ---------------------------------- |
-| Node.js + Express  | Servidor HTTP                      |
-| mysql2             | Conexión a base de datos           |
-| jsonwebtoken       | Autenticación JWT                  |
-| bcryptjs           | Hash de contraseñas                |
-| multer             | Subida de fotos de portada         |
-| nodemailer         | Envío de emails (Gmail SMTP)       |
-| node-cron          | Tareas programadas (recordatorios) |
-| helmet             | Cabeceras de seguridad HTTP        |
-| express-rate-limit | Limitación de intentos de login    |
-| dotenv             | Variables de entorno               |
+| Paquete            | Uso                             |
+| ------------------ | ------------------------------- |
+| Node.js + Express  | Servidor HTTP                   |
+| mysql2             | Conexión a base de datos        |
+| jsonwebtoken       | Autenticación JWT               |
+| bcryptjs           | Hash de contraseñas             |
+| multer             | Subida de fotos                 |
+| nodemailer         | Envío de emails                 |
+| node-cron          | Tareas programadas              |
+| helmet             | Cabeceras de seguridad HTTP     |
+| express-rate-limit | Limitación de intentos de login |
+| dotenv             | Variables de entorno            |
 
 ---
 
@@ -57,24 +41,24 @@ Aplicación web completa para la gestión de la biblioteca del Colegio Juan de L
 ┌─────────────────────────────────────────────┐
 │              Navegador (React)              │
 │         http://localhost:5173 (dev)         │
-│    https://biblioteca.lanuza.local (prod)   │
+│    https://biblioteca.juandelanuza.local    │
 └──────────────────┬──────────────────────────┘
                    │ HTTP / HTTPS
 ┌──────────────────▼──────────────────────────┐
 │             Nginx (producción)              │
-│  / → proxy al cliente (React build)         │
-│  /api → proxy al servidor Express           │
+│  /        → build de React                  │
+│  /api     → proxy a Express :3001           │
 │  /uploads → archivos estáticos (fotos)      │
 └──────────┬──────────────────────────────────┘
            │
 ┌──────────▼──────────────────────────────────┐
 │         Servidor Express (Node.js)          │
 │           http://localhost:3001             │
-│       Mantenido con PM2 en producción       │
+│         Gestionado con PM2                  │
 └──────────┬──────────────────────────────────┘
            │
 ┌──────────▼──────────────────────────────────┐
-│          MariaDB / MySQL                    │
+│               MariaDB                       │
 │       base de datos: biblioteca_lanuza      │
 └─────────────────────────────────────────────┘
 ```
@@ -85,54 +69,53 @@ Aplicación web completa para la gestión de la biblioteca del Colegio Juan de L
 
 ```
 biblioteca_lanuza/
-├── client/                                             # Frontend React
-│   ├── public/                                         # Archivos estáticos (logos, imágenes)
-│   │   ├── arbol_logo_transparente_wide.png            # Logo horizontal (cabeceras)
-│   │   ├── arbol_logo_transparente_cuadrado.png        # Logo cuadrado (favicon)
-│   │   ├── logo.png                                    # Logo alternativo
-│   │   ├── login-bg.jpg                                # Foto de fondo del login
-│   │   ├── portada-default.png                         # Portada por defecto para libros sin foto
-│   │   └── fonts/
-│   │       └── Essai.ttf                               # Fuente corporativa
+├── client/
+│   ├── public/
+│   │   ├── fonts/Essai.ttf
+│   │   ├── login-bg.jpg
+│   │   └── portada-default.png
 │   └── src/
-│       ├── App.jsx                                     # Definición de rutas
-│       ├── main.jsx                                    # Punto de entrada
-│       ├── index.css                                   # Estilos globales + Tailwind
-│       ├── components/                                 # Componentes reutilizables
-│       │   ├── Footer.jsx                              # Pie de página global
-│       │   ├── LibroCard.jsx                           # Tarjeta de libro en catálogo
-│       │   ├── PrivateRoute.jsx                        # Guard de rutas protegidas
-│       │   ├── Sidebar.jsx                             # Menú lateral de gestión
-│       │   └── Toast.jsx                               # Notificaciones emergentes
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── components/
+│       │   ├── EtiquetasImpresion.jsx
+│       │   ├── Footer.jsx
+│       │   ├── LibroCard.jsx
+│       │   ├── PrivateRoute.jsx
+│       │   ├── Sidebar.jsx
+│       │   └── Toast.jsx
 │       ├── context/
-│       │   └── AuthContext.jsx                         # Estado global de autenticación
-│       ├── pages/                                      # Páginas de la aplicación
-│       │   ├── Catalogo.jsx                            # Catálogo público de libros
-│       │   ├── Dashboard.jsx                           # Panel inicial de gestión
-│       │   ├── Estadisticas.jsx                        # Gráficas y métricas de uso
-│       │   ├── LibroDetalle.jsx                        # Detalle público de un libro
-│       │   ├── Libros.jsx                              # Gestión de libros (biblioteca)
-│       │   ├── Login.jsx                               # Inicio de sesión
-│       │   ├── MiEspacio.jsx                           # Perfil del usuario
-│       │   ├── OlvidePassword.jsx                      # Solicitud de recuperación de contraseña
-│       │   ├── Prestamos.jsx                           # Gestión de préstamos (biblioteca)
-│       │   ├── Register.jsx                            # Registro de nueva cuenta
-│       │   ├── Registro.jsx                            # Registro de visitas diarias
-│       │   ├── ResetPassword.jsx                       # Restablecer contraseña con token
-│       │   └── Usuarios.jsx                            # Gestión de usuarios (biblioteca)
+│       │   └── AuthContext.jsx
+│       ├── pages/
+│       │   ├── Actividades.jsx
+│       │   ├── Catalogo.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── Estadisticas.jsx
+│       │   ├── LibroDetalle.jsx
+│       │   ├── Libros.jsx
+│       │   ├── Login.jsx
+│       │   ├── MiEspacio.jsx
+│       │   ├── OlvidePassword.jsx
+│       │   ├── Prestamos.jsx
+│       │   ├── Register.jsx
+│       │   ├── Registro.jsx
+│       │   ├── ResetPassword.jsx
+│       │   └── Usuarios.jsx
 │       ├── services/
-│       │   └── api.js                                  # Instancia de Axios con baseURL y token
+│       │   └── api.js
 │       └── utils/
-│           ├── csv.js                                  # Utilidades para exportar a CSV
-│           └── dates.js                                # Formateo de fechas
+│           ├── csv.js
+│           └── dates.js
 │
-├── server/                                             # Backend Express
-│   ├── .env                                            # Variables de entorno (no esta en git)
-│   ├── uploads/                                        # Fotos de portada subidas
+├── server/
+│   ├── uploads/
+│   │   ├── fotos_portadas/
+│   │   └── fotos_actividades/
 │   └── src/
-│       ├── index.js                                    # Entrada del servidor, middlewares globales
-│       ├── db.js                                       # Pool de conexiones MySQL
-│       ├── controllers/                                # Lógica de negocio
+│       ├── index.js
+│       ├── db.js
+│       ├── controllers/
+│       │   ├── actividadesController.js
 │       │   ├── authController.js
 │       │   ├── configController.js
 │       │   ├── estadisticasController.js
@@ -142,10 +125,13 @@ biblioteca_lanuza/
 │       │   ├── prestamosController.js
 │       │   ├── registroController.js
 │       │   └── usuariosController.js
+│       ├── jobs/
+│       │   └── recordatorios.js
 │       ├── middleware/
-│       │   ├── auth.js                                 # Verifica JWT en cabecera Authorization
-│       │   └── isPersonal.js                           # Restringe acceso a rol biblioteca
-│       ├── routes/                                     # Definición de endpoints
+│       │   ├── auth.js
+│       │   └── isPersonal.js
+│       ├── routes/
+│       │   ├── actividades.js
 │       │   ├── auth.js
 │       │   ├── config.js
 │       │   ├── estadisticas.js
@@ -154,308 +140,285 @@ biblioteca_lanuza/
 │       │   ├── prestamos.js
 │       │   ├── registro.js
 │       │   └── usuarios.js
-│       ├── services/
-│       │   └── mailer.js                               # Configuración Nodemailer + función sendMail
-│       └── jobs/
-│           └── recordatorios.js                        # Cron que envía recordatorios de devolución
+│       └── services/
+│           └── mailer.js
 │
-└── database/                                           # Scripts SQL de la BD
+└── database/
 ```
 
 ---
 
-## Instalación y arranque en local
+## Instalación en local
 
-### Requisitos previos
+### Requisitos
 
 - Node.js 18+
 - MySQL / MariaDB
-- XAMPP (recomendado para desarrollo local)
+- XAMPP (recomendado para desarrollo)
 
-### 1. Clonar el repositorio
+### 1. Clonar
 
 ```bash
-git clone <https://github.com/jxrgxx/biblioteca_lanuza.git>
+git clone https://github.com/jxrgxx/biblioteca_lanuza.git
 cd biblioteca_lanuza
 ```
 
 ### 2. Base de datos
 
-1. Arrancar XAMPP y activar Apache + MySQL
-2. Abrir phpMyAdmin (`http://localhost/phpmyadmin`)
-3. Crear una base de datos llamada `biblioteca_lanuza`
-4. Importar el esquema desde `database/`
+1. Arrancar XAMPP (Apache + MySQL)
+2. Abrir phpMyAdmin → crear base de datos `biblioteca_lanuza`
+3. Importar el esquema desde `database/`
 
-### 3. Configurar el servidor
+### 3. Servidor
 
-```bash de vscode
+```bash
 cd server
-cp .env.example .env   # o crear .env manualmente (os proporcioanre el .env)
+cp .env.example .env   # completar con las credenciales
 npm install
-npm run dev            # arranca con nodemon en el puerto 3001
+npm run dev            # puerto 3001
 ```
 
-### 4. Configurar el cliente
+### 4. Cliente
 
-```bash de vscode
+```bash
 cd client
 npm install
-npm run dev            # arranca Vite en el puerto 5173
+npm run dev            # puerto 5173
 ```
-
-La aplicación estará disponible en `http://localhost:5173`.
 
 ---
 
 ## Variables de entorno
 
-Crear el archivo `server/.env` (os proporcionare el .env local) con las siguientes variables:
+`server/.env`:
 
 ```env
-# Base de datos
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=biblioteca_lanuza
 
-# JWT
-JWT_SECRET=<cadena_aleatoria_larga>
+JWT_SECRET=
 
-# Servidor
 PORT=3001
 CLIENT_URL=http://localhost:5173
 
-# SMTP (Gmail)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=correo@juandelanuza.org
-SMTP_PASS=<contraseña_de_aplicacion_gmail>
+SMTP_PASS=
 SMTP_FROM=correo@juandelanuza.org
-
 ```
 
-> **Nota sobre SMTP_PASS:** Gmail requiere una _contraseña de aplicación_, no la contraseña normal de la cuenta. Se genera en la configuración de seguridad de Google con la verificación en dos pasos activada.
+`SMTP_PASS` debe ser una contraseña de aplicación de Gmail (no la contraseña de la cuenta).
 
 ---
 
 ## Sistema de roles
 
-| Rol           | Acceso                                                                 |
-| ------------- | ---------------------------------------------------------------------- |
-| `alumno`      | Catálogo público, detalle de libro, Mi espacio (sus propios préstamos) |
-| `profesorado` | Todo lo anterior + panel de gestión completo                           |
-| `personal`    | Todo lo anterior + panel de gestión completo                           |
-| `biblioteca`  | Todo lo anterior + panel de gestión completo                           |
+| Rol           | Acceso                              |
+| ------------- | ----------------------------------- |
+| `alumno`      | Catálogo público, Mi espacio        |
+| `profesorado` | Todo lo anterior + panel de gestión |
+| `personal`    | Todo lo anterior + panel de gestión |
+| `biblioteca`  | Todo lo anterior + panel de gestión |
 
-Los roles `profesorado` y `personal` requieren un **código de registro** al crear la cuenta. Este código lo gestiona el bibliotecario desde la sección de Usuarios.
-
-El middleware `isPersonal` en el servidor bloquea el acceso a endpoints de gestión si el rol del token JWT no es `biblioteca`.
+Los roles `profesorado` y `personal` requieren un código de registro al crear la cuenta. El rol `biblioteca` solo se puede asignar a usuarios que ya sean `personal` o `profesorado`.
 
 ---
 
 ## Rutas del cliente
 
-### Rutas públicas
+### Públicas
 
-| Ruta                        | Página           | Descripción                               |
-| --------------------------- | ---------------- | ----------------------------------------- |
-| `/`                         | `Catalogo`       | Catálogo de libros con buscador y filtros |
-| `/libros/:id`               | `LibroDetalle`   | Detalle de un libro, disponibilidad y QR  |
-| `/login`                    | `Login`          | Inicio de sesión                          |
-| `/register`                 | `Register`       | Crear cuenta nueva                        |
-| `/olvide-password`          | `OlvidePassword` | Solicitar enlace de recuperación          |
-| `/reset-password?token=...` | `ResetPassword`  | Establecer nueva contraseña               |
+| Ruta                     | Página           | Descripción                          |
+| ------------------------ | ---------------- | ------------------------------------ |
+| `/`                      | `Catalogo`       | Catálogo con buscador y filtros      |
+| `/libros/:id`            | `LibroDetalle`   | Detalle y QR de un libro             |
+| `/login`                 | `Login`          | Inicio de sesión                     |
+| `/register`              | `Register`       | Crear cuenta                         |
+| `/olvide-password`       | `OlvidePassword` | Solicitar recuperación de contraseña |
+| `/reset-password?token=` | `ResetPassword`  | Restablecer contraseña               |
 
-### Rutas protegidas — solo rol biblioteca
+### Protegidas — rol biblioteca
 
-| Ruta            | Página         | Descripción                           |
-| --------------- | -------------- | ------------------------------------- |
-| `/dashboard`    | `Dashboard`    | Resumen general con métricas          |
-| `/libros`       | `Libros`       | CRUD de libros, estanterías, exportar |
-| `/prestamos`    | `Prestamos`    | Gestión de préstamos y devoluciones   |
-| `/usuarios`     | `Usuarios`     | CRUD de usuarios, importar CSV        |
-| `/registro`     | `Registro`     | Registro de visitas diarias           |
-| `/estadisticas` | `Estadisticas` | Gráficas y estadísticas de uso        |
+| Ruta            | Página         | Descripción                      |
+| --------------- | -------------- | -------------------------------- |
+| `/dashboard`    | `Dashboard`    | Resumen con métricas             |
+| `/libros`       | `Libros`       | Gestión de libros y estanterías  |
+| `/prestamos`    | `Prestamos`    | Gestión de préstamos             |
+| `/usuarios`     | `Usuarios`     | Gestión de usuarios              |
+| `/registro`     | `Registro`     | Registro de visitas diarias      |
+| `/estadisticas` | `Estadisticas` | Gráficas y estadísticas          |
+| `/actividades`  | `Actividades`  | Gestión de actividades con fotos |
 
-### Rutas protegidas — cualquier usuario autenticado
+### Protegidas — cualquier usuario autenticado
 
-| Ruta          | Página      | Descripción                                 |
-| ------------- | ----------- | ------------------------------------------- |
-| `/mi-espacio` | `MiEspacio` | Perfil propio y préstamos activos/histórico |
+| Ruta          | Página      | Descripción               |
+| ------------- | ----------- | ------------------------- |
+| `/mi-espacio` | `MiEspacio` | Perfil propio y préstamos |
 
 ---
 
-## API REST — Endpoints
+## API REST
 
 Todos los endpoints van prefijados con `/api`.
 
 ### Autenticación — `/api/auth`
 
-| Método | Ruta                | Auth | Descripción                                           |
-| ------ | ------------------- | ---- | ----------------------------------------------------- |
-| POST   | `/register`         | No   | Registrar nuevo usuario                               |
-| POST   | `/login`            | No   | Iniciar sesión, devuelve JWT                          |
-| GET    | `/perfil`           | Sí   | Obtener datos del usuario autenticado para mi espacio |
-| PUT    | `/cambiar-password` | Sí   | Cambiar contraseña (requiere la actual)               |
-| POST   | `/forgot-password`  | No   | Solicitar email de recuperación                       |
-| POST   | `/reset-password`   | No   | Restablecer contraseña con token                      |
+| Método | Ruta                | Auth | Descripción                      |
+| ------ | ------------------- | ---- | -------------------------------- |
+| POST   | `/register`         | No   | Registrar usuario                |
+| POST   | `/login`            | No   | Login, devuelve JWT              |
+| GET    | `/perfil`           | Sí   | Datos del usuario autenticado    |
+| PUT    | `/cambiar-password` | Sí   | Cambiar contraseña               |
+| POST   | `/forgot-password`  | No   | Solicitar email de recuperación  |
+| POST   | `/reset-password`   | No   | Restablecer contraseña con token |
 
-> El endpoint `/login` tiene rate limit: máximo **20 peticiones por IP cada 15 minutos**.
-
----
+El endpoint `/login` tiene rate limit: 20 peticiones por IP cada 15 minutos.
 
 ### Libros — `/api/libros`
 
-| Método | Ruta                   | Auth       | Descripción                                       |
-| ------ | ---------------------- | ---------- | ------------------------------------------------- |
-| GET    | `/`                    | No         | Listar libros con filtros y búsqueda              |
-| GET    | `/filtros/generos`     | No         | Lista de géneros distintos                        |
-| GET    | `/filtros/idiomas`     | No         | Lista de idiomas distintos                        |
-| GET    | `/filtros/editoriales` | No         | Lista de editoriales distintas                    |
-| GET    | `/filtros/estanterias` | No         | Lista de estanterías distintas                    |
-| GET    | `/:id`                 | No         | Detalle de un libro                               |
-| POST   | `/`                    | Biblioteca | Crear libro (genera código `L_N` automático)      |
-| PUT    | `/:id`                 | Biblioteca | Editar libro                                      |
-| DELETE | `/:id`                 | Biblioteca | Eliminar libro (falla si tiene préstamos activos) |
-| POST   | `/:id/foto`            | Biblioteca | Subir foto de portada                             |
-
-**Parámetros de filtro para `GET /`:**
-
-- `search` — búsqueda por título, autor, ISBN o código
-- `estado` — `disponible`, `prestado`, `baja`
-- `genero`, `idioma`, `editorial`, `estanteria`
-- `sort`, `order` — columna y dirección de ordenación
-
-```
-GET /api/libros?search=harry&estado=disponible&genero=Fantasía&sort=titulo&order=asc
-```
-
----
+| Método | Ruta                   | Auth       | Descripción                                                                                          |
+| ------ | ---------------------- | ---------- | ---------------------------------------------------------------------------------------------------- |
+| GET    | `/`                    | No         | Listar con filtros (`search`, `estado`, `genero`, `idioma`, `editorial`, `estanteria`, `etiquetado`) |
+| GET    | `/filtros/generos`     | No         | Géneros disponibles                                                                                  |
+| GET    | `/filtros/idiomas`     | No         | Idiomas disponibles                                                                                  |
+| GET    | `/filtros/editoriales` | No         | Editoriales disponibles                                                                              |
+| GET    | `/filtros/estanterias` | No         | Estanterías disponibles                                                                              |
+| GET    | `/:id`                 | No         | Detalle de un libro                                                                                  |
+| POST   | `/`                    | Biblioteca | Crear libro (genera código `L_N`)                                                                    |
+| PUT    | `/:id`                 | Biblioteca | Editar libro                                                                                         |
+| DELETE | `/:id`                 | Biblioteca | Eliminar (falla si tiene préstamos activos)                                                          |
+| POST   | `/:id/foto`            | Biblioteca | Subir foto de portada                                                                                |
+| POST   | `/importar`            | Biblioteca | Importar libros desde CSV                                                                            |
+| POST   | `/marcar-etiquetado`   | Biblioteca | Marcar libros como etiquetados                                                                       |
+| POST   | `/eliminar-multiple`   | Biblioteca | Eliminar varios libros                                                                               |
 
 ### Préstamos — `/api/prestamos`
 
-| Método | Ruta            | Auth       | Descripción                                     |
-| ------ | --------------- | ---------- | ----------------------------------------------- |
-| GET    | `/`             | Biblioteca | Listar todos los préstamos                      |
-| GET    | `/mis`          | Sí         | Préstamos del usuario autenticado               |
-| GET    | `/:id`          | Biblioteca | Detalle de un préstamo                          |
-| POST   | `/`             | Biblioteca | Crear préstamo individual                       |
-| POST   | `/lote`         | Biblioteca | Crear préstamos en lote (por código de usuario) |
-| PUT    | `/:id/devolver` | Biblioteca | Registrar devolución                            |
-| PUT    | `/:id`          | Biblioteca | Editar préstamo                                 |
-| DELETE | `/:id`          | Biblioteca | Eliminar préstamo                               |
-
-Al crear un préstamo se genera automáticamente un código alfanumérico de 6 caracteres, se actualiza el estado del libro a `prestado` y se programa un recordatorio por email para la fecha de devolución.
-
----
+| Método | Ruta                 | Auth       | Descripción                       |
+| ------ | -------------------- | ---------- | --------------------------------- |
+| GET    | `/`                  | Biblioteca | Listar todos                      |
+| GET    | `/mis`               | Sí         | Préstamos del usuario autenticado |
+| GET    | `/:id`               | Biblioteca | Detalle                           |
+| POST   | `/`                  | Biblioteca | Crear préstamo individual         |
+| POST   | `/lote`              | Biblioteca | Crear préstamos en lote           |
+| PUT    | `/:id/devolver`      | Biblioteca | Registrar devolución              |
+| PUT    | `/:id`               | Biblioteca | Editar préstamo                   |
+| DELETE | `/:id`               | Biblioteca | Eliminar préstamo                 |
+| POST   | `/eliminar-multiple` | Biblioteca | Eliminar varios préstamos         |
 
 ### Usuarios — `/api/usuarios`
 
-| Método | Ruta                   | Auth       | Descripción                                         |
-| ------ | ---------------------- | ---------- | --------------------------------------------------- |
-| GET    | `/`                    | Biblioteca | Listar todos los usuarios                           |
-| GET    | `/:id`                 | Biblioteca | Detalle de un usuario                               |
-| GET    | `/:id/prestamos-count` | Biblioteca | Número total de préstamos de un usuario             |
-| POST   | `/`                    | Biblioteca | Crear usuario (genera código `U_N` automático)      |
-| POST   | `/importar`            | Biblioteca | Importar usuarios en bloque desde CSV               |
-| POST   | `/subida-de-curso`     | Biblioteca | Avanzar curso a todos los alumnos                   |
-| PUT    | `/:id`                 | Biblioteca | Editar usuario                                      |
-| PATCH  | `/:id/activo`          | Biblioteca | Activar o desactivar usuario                        |
-| DELETE | `/:id`                 | Biblioteca | Eliminar usuario (falla si tiene préstamos activos) |
+| Método | Ruta                   | Auth       | Descripción                                 |
+| ------ | ---------------------- | ---------- | ------------------------------------------- |
+| GET    | `/`                    | Biblioteca | Listar todos                                |
+| GET    | `/:id`                 | Biblioteca | Detalle                                     |
+| GET    | `/:id/prestamos-count` | Biblioteca | Número de préstamos del usuario             |
+| POST   | `/`                    | Biblioteca | Crear usuario (genera código `U_N`)         |
+| POST   | `/importar`            | Biblioteca | Importar desde CSV                          |
+| POST   | `/subida-de-curso`     | Biblioteca | Avanzar curso a todos los alumnos           |
+| POST   | `/eliminar-multiple`   | Biblioteca | Eliminar varios usuarios                    |
+| PUT    | `/:id`                 | Biblioteca | Editar usuario                              |
+| PATCH  | `/:id/activo`          | Biblioteca | Activar / desactivar                        |
+| DELETE | `/:id`                 | Biblioteca | Eliminar (falla si tiene préstamos activos) |
 
-**Importación CSV (`POST /importar`):**
-Recibe un array de objetos `{nombre, apellidos, email}` junto con `rol`, `ubicacion` (curso) y `password` comunes para todos. Ejecuta todo en una transacción MySQL: si falla cualquier fila, no se inserta ninguna.
+### Actividades — `/api/actividades`
 
-**Subida de curso (`POST /subida-de-curso`):**
-
-- Los alumnos de `2º Bach` se desactivan automáticamente.
-- El resto de alumnos avanzan al siguiente curso de la lista.
-
----
+| Método | Ruta                 | Auth       | Descripción                    |
+| ------ | -------------------- | ---------- | ------------------------------ |
+| GET    | `/`                  | Biblioteca | Listar (filtrable por fecha)   |
+| GET    | `/enums`             | Biblioteca | Tipos disponibles              |
+| GET    | `/:id`               | Biblioteca | Detalle con fotos              |
+| POST   | `/`                  | Biblioteca | Crear actividad                |
+| PUT    | `/:id`               | Biblioteca | Editar actividad               |
+| DELETE | `/:id`               | Biblioteca | Eliminar actividad y sus fotos |
+| POST   | `/:id/fotos`         | Biblioteca | Subir foto                     |
+| DELETE | `/:id/fotos/:fotoId` | Biblioteca | Eliminar foto                  |
 
 ### Estanterías — `/api/estanterias`
 
-| Método | Ruta   | Auth       | Descripción                                                 |
-| ------ | ------ | ---------- | ----------------------------------------------------------- |
-| GET    | `/`    | Sí         | Listar todas las estanterías                                |
-| POST   | `/`    | Biblioteca | Crear estantería                                            |
-| PUT    | `/:id` | Biblioteca | Renombrar estantería (actualiza todos los libros afectados) |
-| DELETE | `/:id` | Biblioteca | Eliminar estantería                                         |
-
----
+| Método | Ruta   | Auth       | Descripción                                      |
+| ------ | ------ | ---------- | ------------------------------------------------ |
+| GET    | `/`    | Sí         | Listar todas                                     |
+| POST   | `/`    | Biblioteca | Crear                                            |
+| PUT    | `/:id` | Biblioteca | Renombrar (actualiza todos los libros afectados) |
+| DELETE | `/:id` | Biblioteca | Eliminar                                         |
 
 ### Registro de visitas — `/api/registro`
 
-| Método | Ruta   | Auth       | Descripción                                        |
-| ------ | ------ | ---------- | -------------------------------------------------- |
-| GET    | `/`    | Biblioteca | Listar entradas del registro (filtrable por fecha) |
-| POST   | `/`    | Biblioteca | Crear entrada                                      |
-| PUT    | `/:id` | Biblioteca | Editar entrada                                     |
-| DELETE | `/:id` | Biblioteca | Eliminar entrada                                   |
-
----
+| Método | Ruta   | Auth       | Descripción                  |
+| ------ | ------ | ---------- | ---------------------------- |
+| GET    | `/`    | Biblioteca | Listar (filtrable por fecha) |
+| POST   | `/`    | Biblioteca | Crear entrada                |
+| PUT    | `/:id` | Biblioteca | Editar                       |
+| DELETE | `/:id` | Biblioteca | Eliminar                     |
 
 ### Estadísticas — `/api/estadisticas`
 
-Todos requieren autenticación con rol biblioteca.
+Todos requieren rol biblioteca.
 
-| Ruta                      | Descripción                                                   |
-| ------------------------- | ------------------------------------------------------------- |
-| `/resumen`                | Totales: libros, préstamos activos, vencidos, visitas del mes |
-| `/libros-top`             | Libros más prestados                                          |
-| `/alumnos-top`            | Alumnos con más préstamos                                     |
-| `/prestamos-por-mes`      | Préstamos agrupados por mes                                   |
-| `/prestamos-por-curso`    | Préstamos agrupados por curso del alumno                      |
-| `/libros-nunca-prestados` | Libros que nunca han sido prestados                           |
-| `/tasa-devolucion`        | % de devoluciones a tiempo vs. tarde                          |
-| `/tiempo-medio`           | Duración media de préstamo (global y por curso)               |
-| `/alumnos-morosos`        | Alumnos con préstamos vencidos y días acumulados              |
-| `/registro-por-mes`       | Visitas diarias agrupadas por mes                             |
-| `/cursos-top`             | Cursos con más visitas registradas                            |
-| `/dia-semana`             | Distribución de visitas por día de la semana                  |
-
----
+| Ruta                      | Descripción                       |
+| ------------------------- | --------------------------------- |
+| `/resumen`                | Totales generales                 |
+| `/libros-top`             | Libros más prestados              |
+| `/alumnos-top`            | Alumnos con más préstamos         |
+| `/prestamos-por-mes`      | Préstamos agrupados por mes       |
+| `/prestamos-por-curso`    | Préstamos por curso               |
+| `/libros-nunca-prestados` | Libros sin ningún préstamo        |
+| `/tasa-devolucion`        | % devoluciones a tiempo vs. tarde |
+| `/tiempo-medio`           | Duración media de préstamo        |
+| `/alumnos-morosos`        | Alumnos con préstamos vencidos    |
+| `/registro-por-mes`       | Visitas agrupadas por mes         |
+| `/cursos-top`             | Cursos con más visitas            |
+| `/dia-semana`             | Visitas por día de la semana      |
 
 ### Configuración — `/api/config`
 
-| Método | Ruta               | Auth       | Descripción                       |
-| ------ | ------------------ | ---------- | --------------------------------- |
-| GET    | `/codigo-registro` | Biblioteca | Obtener código de registro actual |
-| POST   | `/codigo-registro` | Biblioteca | Generar nuevo código de registro  |
+| Método | Ruta               | Auth       | Descripción                |
+| ------ | ------------------ | ---------- | -------------------------- |
+| GET    | `/codigo-registro` | Biblioteca | Obtener código de registro |
+| POST   | `/codigo-registro` | Biblioteca | Generar nuevo código       |
 
 ---
 
 ## Base de datos
 
-### Tablas principales
-
 **`usuario`**
 
 ```
 id, codigo (U_N), nombre, apellidos, email, password,
-rol, ubicacion (curso/clase), activo, fecha_alta, fecha_baja
+rol, ubicacion, activo, fecha_alta, fecha_baja
 ```
 
 **`libro`**
 
 ```
-id, codigo (L_N), titulo, autor, editorial,
-genero, idioma, categoria, volumen, estanteria, estado, nombre_foto
+id, codigo (L_N), titulo, autor, editorial, volumen,
+idioma, genero, categoria, estanteria, estado, nombre_foto, etiquetado
 ```
 
 **`prestamo`**
 
 ```
-id, codigo (alfanumérico 6 chars), id_usuario, id_libro,
+id, codigo (6 chars), id_usuario, id_libro, codigo_lote,
 fecha_inicio, fecha_devolucion_prevista, fecha_devolucion_real,
-devuelto, codigo_lote, created_at
+devuelto, created_at
 ```
 
-**`registro`**
+**`actividad`**
 
 ```
-id, nombre, codigo_usuario, curso, fecha
+id, nombre, fecha, tipo, subtipo, idioma, duracion,
+destinatario, curso_destinatario, objetivos, reflexiones
+```
+
+**`actividad_foto`**
+
+```
+id, id_actividad, nombre_foto
 ```
 
 **`estanteria`**
@@ -464,16 +427,10 @@ id, nombre, codigo_usuario, curso, fecha
 id, nombre
 ```
 
-**`config`**
+**`registro`**
 
 ```
-clave, valor
-```
-
-**`password_reset`**
-
-```
-id, id_usuario, token, expires_at, usado, created_at
+id, nombre, codigo_usuario, curso, fecha
 ```
 
 **`recordatorio`**
@@ -482,61 +439,39 @@ id, id_usuario, token, expires_at, usado, created_at
 id, id_prestamo, codigo_lote, enviar_en, enviado, created_at
 ```
 
+**`password_reset`**
+
+```
+id, id_usuario, token, expires_at, usado, created_at
+```
+
+**`config`**
+
+```
+clave, valor
+```
+
 ### Estados de un libro
 
-- `disponible` — puede prestarse
-- `prestado` — tiene un préstamo activo
-- `extraviado` — libro perdido
-- `no disponible` — retirado temporalmente del catálogo
+| Estado          | Descripción              |
+| --------------- | ------------------------ |
+| `disponible`    | Se puede prestar         |
+| `prestado`      | Tiene un préstamo activo |
+| `extraviado`    | Libro perdido            |
+| `no disponible` | Retirado temporalmente   |
 
 ---
 
 ## Funcionalidades destacadas
 
-### Recuperación de contraseña
+**Recordatorios automáticos** — Un cron cada 5 minutos revisa la tabla `recordatorio` y envía emails a los usuarios el día anterior a la fecha de devolución prevista (a las 16:45).
 
-Flujo completo por email: el usuario solicita el reset, el servidor genera un token con 1 hora de validez y envía un email con el enlace. Al usar el enlace, el token se marca como usado y no puede reutilizarse.
+**Importación masiva** — Libros y usuarios se pueden importar desde CSV. Se muestra previsualización antes de confirmar. La inserción es todo o nada (transacción MySQL).
 
-### Recordatorios automáticos
+**Selección múltiple** — En Libros, Préstamos y Usuarios se pueden seleccionar varios registros con click, shift+click o seleccionar todo, para eliminarlos en lote. Si alguno falla, no se elimina ninguno.
 
-Un cron job (`node-cron`) se ejecuta cada 5 minutos y revisa la tabla `recordatorio` buscando entradas pendientes cuya hora de envío ya haya llegado. Cuando se crea un préstamo, se programa automáticamente un recordatorio para las 16:45 del día anterior a la devolución prevista. El email se envía al usuario con los detalles del libro y la fecha límite.
+**Etiquetas QR** — Desde la página de Libros se pueden seleccionar hasta 32 libros e imprimir sus etiquetas QR en formato A4 (4 columnas × 8 filas, 52.5 × 37 mm). El sistema lleva registro de qué libros ya han sido etiquetados.
 
-### Importación masiva de usuarios por CSV
+**Subida de curso** — Avanza automáticamente el curso de todos los alumnos activos. Los alumnos de 2º Bach quedan desactivados.
 
-Desde la página de Usuarios se puede subir un CSV con columnas `nombre`, `apellidos`, `email`. El personal elige el rol, el curso y una contraseña común para todos. Se muestra una previsualización antes de confirmar. La inserción es todo o nada (transacción MySQL): si hay un email duplicado u otro error, no se crea ningún usuario.
-
-### Subida de curso
-
-Un botón especial recorre todos los alumnos activos y los avanza automáticamente al siguiente curso de la lista. Los alumnos en `2º Bach` quedan desactivados.
-
-### Exportación
-
-Las páginas de Libros, Usuarios y Préstamos permiten exportar los datos visibles en pantalla a CSV o JSON desde un desplegable.
-
-### Lightbox de portada
-
-Al hacer clic en una fila de la tabla de libros se abre un modal con la foto de portada del libro en tamaño completo.
-
-### Estanterías editables
-
-Al renombrar una estantería desde el panel de Libros, todos los libros que tenían asignada esa estantería se actualizan automáticamente en la base de datos.
-
----
-
-## Despliegue en producción
-
-El servidor de producción es una VPS con Debian. El proceso general es:
-
-1. **Subir cambios al servidor** vía SSH / `git pull`
-2. **Compilar el cliente:**
-   ```bash
-   cd client && npm run build
-   ```
-3. **Reiniciar el servidor con PM2:**
-   ```bash
-   pm2 restart biblioteca-server
-   ```
-4. **Nginx** sirve el build de React para rutas del cliente y hace proxy de `/api` al puerto 3001.
-5. **MariaDB** corre localmente en el servidor.
-
-Para más detalles sobre la infraestructura del servidor (SSH, PM2, Nginx, pasos exactos de deploy) consultar la memoria del proyecto: `memory/project_server.md`.
+**Recuperación de contraseña** — Flujo completo por email con token de un solo uso y validez de 1 hora.
