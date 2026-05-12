@@ -374,6 +374,7 @@ export default function Actividades() {
   const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
   const [editFotos, setEditFotos] = useState([]);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fotoInputRef = useRef(null);
@@ -533,16 +534,25 @@ export default function Actividades() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar esta actividad? Se borrarán también sus fotos.'))
-      return;
-    try {
-      await api.delete(`/actividades/${id}`);
-      showToast('Actividad eliminada');
-      load();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar');
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar esta actividad? Se borrarán también sus fotos.',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.delete(`/actividades/${id}`);
+          showToast('Actividad eliminada');
+          load();
+        } catch (err) {
+          setConfirmModal({
+            open: true,
+            message: err.response?.data?.error || 'Error al eliminar',
+            onConfirm: null,
+          });
+        }
+      },
+    });
   };
 
   // Fotos
@@ -564,29 +574,35 @@ export default function Actividades() {
       );
       showToast('Foto añadida');
     } catch {
-      alert('Error al subir la foto');
+      setConfirmModal({ open: true, message: 'Error al subir la foto', onConfirm: null });
     } finally {
       setUploadingFoto(false);
       e.target.value = '';
     }
   };
 
-  const handleDeleteFoto = async (fotoId) => {
-    if (!confirm('¿Eliminar esta foto?')) return;
-    try {
-      await api.delete(`/actividades/${editId}/fotos/${fotoId}`);
-      setEditFotos((prev) => prev.filter((f) => f.id !== fotoId));
-      setActividades((prev) =>
-        prev.map((a) =>
-          a.id === editId
-            ? { ...a, fotos: a.fotos.filter((f) => f.id !== fotoId) }
-            : a
-        )
-      );
-      showToast('Foto eliminada');
-    } catch {
-      alert('Error al eliminar la foto');
-    }
+  const handleDeleteFoto = (fotoId) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar esta foto?',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.delete(`/actividades/${editId}/fotos/${fotoId}`);
+          setEditFotos((prev) => prev.filter((f) => f.id !== fotoId));
+          setActividades((prev) =>
+            prev.map((a) =>
+              a.id === editId
+                ? { ...a, fotos: a.fotos.filter((f) => f.id !== fotoId) }
+                : a
+            )
+          );
+          showToast('Foto eliminada');
+        } catch {
+          setConfirmModal({ open: true, message: 'Error al eliminar la foto', onConfirm: null });
+        }
+      },
+    });
   };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -852,7 +868,7 @@ export default function Actividades() {
 
       {/* Modal crear */}
       {modal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">Nueva actividad</h2>
@@ -882,7 +898,7 @@ export default function Actividades() {
 
       {/* Modal editar */}
       {editModal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-bold">Editar actividad</h2>
@@ -1069,6 +1085,39 @@ export default function Actividades() {
             className="max-h-full max-w-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-gray-800 font-medium text-center">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-center">
+              {confirmModal.onConfirm ? (
+                <>
+                  <button
+                    onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                    className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Eliminar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                  className="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium"
+                >
+                  Aceptar
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

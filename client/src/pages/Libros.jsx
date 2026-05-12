@@ -3,13 +3,17 @@ import {
   Search,
   Pencil,
   Trash2,
+  Printer,
+  Tag,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
   Download,
+  Upload,
 } from 'lucide-react';
 import api from '../services/api';
 import Toast, { useToast } from '../components/Toast';
+import EtiquetasImpresion from '../components/EtiquetasImpresion';
 import { exportarCSV, ordenarPor, COLS_LIBROS } from '../utils/csv';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -61,6 +65,7 @@ export default function Libros() {
   const [filtroIdioma, setFiltroIdioma] = useState('');
   const [filtroEditorial, setFiltroEditorial] = useState('');
   const [filtroEstanteria, setFiltroEstanteria] = useState('');
+  const [filtroEtiquetado, setFiltroEtiquetado] = useState('');
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState('titulo');
   const [sortDir, setSortDir] = useState('asc');
@@ -78,7 +83,22 @@ export default function Libros() {
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef(null);
-  const [fotoModal, setFotoModal] = useState(null); // libro seleccionado para ver foto
+  const [fotoModal, setFotoModal] = useState(null);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const lastClickedRef = useRef(null);
+  const [imprimiendo, setImprimiendo] = useState(false);
+
+  const [modalImportar, setModalImportar] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importEstanteria, setImportEstanteria] = useState('');
+  const [importPreview, setImportPreview] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [importLoading, setImportLoading] = useState(false); // libro seleccionado para ver foto
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    message: '',
+    onConfirm: null,
+  });
   const iframeRef = useRef(null);
 
   const imprimirEtiqueta = (libro) => {
@@ -158,6 +178,7 @@ export default function Libros() {
     if (filtroIdioma) params.set('idioma', filtroIdioma);
     if (filtroEditorial) params.set('editorial', filtroEditorial);
     if (filtroEstanteria) params.set('estanteria', filtroEstanteria);
+    if (filtroEtiquetado !== '') params.set('etiquetado', filtroEtiquetado);
     const { data } = await api.get(`/libros?${params}`);
     setLibros(data);
     setPage(1);
@@ -172,6 +193,7 @@ export default function Libros() {
     filtroIdioma,
     filtroEditorial,
     filtroEstanteria,
+    filtroEtiquetado,
   ]);
 
   const hayFiltros =
@@ -180,7 +202,8 @@ export default function Libros() {
     filtroGenero ||
     filtroIdioma ||
     filtroEditorial ||
-    filtroEstanteria;
+    filtroEstanteria ||
+    filtroEtiquetado !== '';
 
   const limpiarFiltros = () => {
     setSearchInput('');
@@ -190,6 +213,7 @@ export default function Libros() {
     setFiltroIdioma('');
     setFiltroEditorial('');
     setFiltroEstanteria('');
+    setFiltroEtiquetado('');
   };
 
   const toggleSort = (col) => {
@@ -286,7 +310,9 @@ export default function Libros() {
       if (fotoFile) {
         const fd = new FormData();
         fd.append('foto', fotoFile);
-        const nombreBase = form.nombre_foto || (form.volumen ? `${form.titulo}_${form.volumen}` : form.titulo);
+        const nombreBase =
+          form.nombre_foto ||
+          (form.volumen ? `${form.titulo}_${form.volumen}` : form.titulo);
         await api.post(
           `/libros/${libro.id}/foto?nombre=${encodeURIComponent(nombreBase)}`,
           fd
@@ -304,18 +330,183 @@ export default function Libros() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este libro?')) return;
-    try {
-      await api.delete(`/libros/${id}`);
-      showToast('Libro eliminado');
-      load();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar el libro');
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar este libro?',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.delete(`/libros/${id}`);
+          showToast('Libro eliminado');
+          load();
+        } catch (err) {
+          setConfirmModal({
+            open: true,
+            message: err.response?.data?.error || 'Error al eliminar el libro',
+            onConfirm: null,
+          });
+        }
+      },
+    });
   };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const toggleSeleccion = (id, index, shiftKey) => {
+    const next = new Set(seleccionados);
+    if (shiftKey && lastClickedRef.current !== null) {
+      const start = Math.min(lastClickedRef.current, index);
+      const end = Math.max(lastClickedRef.current, index);
+      const target = !seleccionados.has(id);
+      librosPagina.slice(start, end + 1).forEach((item) => {
+        target ? next.add(item.id) : next.delete(item.id);
+      });
+    } else {
+      next.has(id) ? next.delete(id) : next.add(id);
+    }
+    lastClickedRef.current = index;
+    setSeleccionados(next);
+  };
+
+  const toggleTodos = () => {
+    const idsPagina = librosPagina.map((l) => l.id);
+    const todosSeleccionados = idsPagina.every((id) => seleccionados.has(id));
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (todosSeleccionados) idsPagina.forEach((id) => next.delete(id));
+      else idsPagina.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleMarcarEtiquetado = async () => {
+    const ids = [...seleccionados];
+    try {
+      await api.post('/libros/marcar-etiquetado', { ids });
+      showToast(
+        `${ids.length} libro${ids.length > 1 ? 's marcados' : ' marcado'} como etiquetado${ids.length > 1 ? 's' : ''}`
+      );
+      setSeleccionados(new Set());
+      load();
+    } catch {
+      showToast('Error al marcar los libros', 'error');
+    }
+  };
+
+  const handleEliminarMultiple = () => {
+    const ids = [...seleccionados];
+    setConfirmModal({
+      open: true,
+      message: `¿Eliminar ${ids.length} libro${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.post('/libros/eliminar-multiple', { ids });
+          setSeleccionados(new Set());
+          showToast(
+            `${ids.length} libro${ids.length > 1 ? 's' : ''} eliminado${ids.length > 1 ? 's' : ''}`
+          );
+          load();
+        } catch (err) {
+          const fallos = err.response?.data?.fallos;
+          setConfirmModal({
+            open: true,
+            message: fallos
+              ? `No se pueden eliminar los siguientes libros porque tienen préstamos activos:\n${fallos.join(', ')}`
+              : err.response?.data?.error || 'Error al eliminar',
+            onConfirm: null,
+          });
+        }
+      },
+    });
+  };
+
+  const abrirImportar = () => {
+    setImportFile(null);
+    setImportEstanteria('');
+    setImportPreview(null);
+    setImportError('');
+    setModalImportar(true);
+  };
+
+  const parsearCSVLibros = (texto) => {
+    const COLS = [
+      'titulo',
+      'autor',
+      'editorial',
+      'volumen',
+      'idioma',
+      'genero',
+      'estanteria',
+      'categoria',
+    ];
+    const lineas = texto.split(/\r?\n/).filter((l) => l.trim());
+    if (!lineas.length) throw new Error('El archivo está vacío');
+    let inicio = 0;
+    const primera = lineas[0].toLowerCase();
+    if (
+      primera.includes('titulo') ||
+      primera.includes('título') ||
+      primera.includes('autor')
+    ) {
+      inicio = 1;
+    }
+    const resultado = [];
+    for (let i = inicio; i < lineas.length; i++) {
+      const partes = lineas[i]
+        .split(',')
+        .map((p) => p.trim().replace(/^"|"$/g, ''));
+      if (partes.length < 1 || !partes[0]) continue;
+      resultado.push({
+        titulo: partes[0] || '',
+        autor: partes[1] || '',
+        editorial: partes[2] || '',
+        volumen: partes[3] || '',
+        idioma: partes[4] || '',
+        genero: partes[5] || '',
+        categoria: partes[7] || '',
+      });
+    }
+    if (!resultado.length)
+      throw new Error('No se encontraron datos en el archivo');
+    return resultado;
+  };
+
+  const handlePrevisualizarLibros = () => {
+    setImportError('');
+    if (!importFile) {
+      setImportError('Selecciona un archivo CSV');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        setImportPreview(parsearCSVLibros(e.target.result));
+      } catch (err) {
+        setImportError(err.message);
+      }
+    };
+    reader.readAsText(importFile, 'UTF-8');
+  };
+
+  const handleConfirmarImportLibros = async () => {
+    setImportLoading(true);
+    setImportError('');
+    try {
+      const { data } = await api.post('/libros/importar', {
+        libros: importPreview,
+        estanteria: importEstanteria || null,
+      });
+      setModalImportar(false);
+      showToast(`${data.importados} libros importados correctamente`);
+      load();
+    } catch (err) {
+      setImportError(err.response?.data?.error || 'Error al importar');
+    } finally {
+      setImportLoading(false);
+    }
+  };
 
   const handleAddEstanteria = async (e) => {
     e.preventDefault();
@@ -345,10 +536,16 @@ export default function Libros() {
     }
   };
 
-  const handleDeleteEstanteria = async (id) => {
-    if (!confirm('¿Eliminar esta estantería?')) return;
-    await api.delete(`/estanterias/${id}`);
-    loadEstanterias();
+  const handleDeleteEstanteria = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar esta estantería?',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        await api.delete(`/estanterias/${id}`);
+        loadEstanterias();
+      },
+    });
   };
 
   return (
@@ -397,6 +594,13 @@ export default function Libros() {
               </div>
             )}
           </div>
+          <button
+            onClick={abrirImportar}
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-600 hover:border-green-600 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Upload size={15} />
+            Importar CSV
+          </button>
           <button
             onClick={() => {
               setModalEstanterias(true);
@@ -497,6 +701,15 @@ export default function Libros() {
               ))}
             </select>
           ))}
+          <select
+            value={filtroEtiquetado}
+            onChange={(e) => setFiltroEtiquetado(e.target.value)}
+            className={`border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${filtroEtiquetado !== '' ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-300'}`}
+          >
+            <option value="">Etiqueta</option>
+            <option value="0">Sin etiquetar</option>
+            <option value="1">Etiquetados</option>
+          </select>
         </div>
 
         {/* Contador */}
@@ -507,10 +720,62 @@ export default function Libros() {
         </p>
       </div>
 
+      {seleccionados.size > 0 && (
+        <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-4 py-2.5 mb-3">
+          <span className="text-sm text-brand-700 font-medium">
+            {seleccionados.size} libro{seleccionados.size > 1 ? 's' : ''}{' '}
+            seleccionado{seleccionados.size > 1 ? 's' : ''}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSeleccionados(new Set())}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Deseleccionar todo
+            </button>
+            <button
+              onClick={() => setImprimiendo(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-lg"
+            >
+              <Printer size={12} />
+              Imprimir etiquetas
+              {seleccionados.size > 32 && (
+                <span className="ml-1 bg-amber-400 text-amber-900 text-xs font-semibold px-1.5 py-0.5 rounded-full leading-none">
+                  máx. 32
+                </span>
+              )}
+            </button>
+            <button
+              onClick={handleMarcarEtiquetado}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg"
+            >
+              <Tag size={12} /> Marcar etiquetadas
+            </button>
+            <button
+              onClick={handleEliminarMultiple}
+              className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg"
+            >
+              <Trash2 size={12} /> Eliminar seleccionados
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={
+                    librosPagina.length > 0 &&
+                    librosPagina.every((l) => seleccionados.has(l.id))
+                  }
+                  onChange={toggleTodos}
+                  className="cursor-pointer"
+                />
+              </th>
               <Th col="codigo">Código</Th>
               <Th col="titulo">Título</Th>
               <Th col="autor">Autor</Th>
@@ -526,13 +791,29 @@ export default function Libros() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {librosPagina.map((l) => (
+            {librosPagina.map((l, idx) => (
               <tr
                 key={l.id}
-                className="hover:bg-gray-50 cursor-pointer"
+                className={`hover:bg-gray-50 cursor-pointer ${seleccionados.has(l.id) ? 'bg-brand-50' : ''}`}
                 onClick={() => setFotoModal(l)}
               >
-                <td className="px-4 py-3 font-mono text-xs">{l.codigo}</td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.has(l.id)}
+                    onChange={() => {}}
+                    onClick={(e) => toggleSeleccion(l.id, idx, e.shiftKey)}
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <span className="flex items-center gap-1.5">
+                    {l.codigo}
+                    {l.etiquetado ? (
+                      <Tag size={11} className="text-green-500 flex-shrink-0" />
+                    ) : null}
+                  </span>
+                </td>
                 <td className="px-4 py-3 font-medium">{l.titulo}</td>
                 <td className="px-4 py-3 text-gray-600">{l.autor || '—'}</td>
                 <td className="px-4 py-3 text-gray-600">
@@ -619,7 +900,7 @@ export default function Libros() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">
@@ -815,7 +1096,7 @@ export default function Libros() {
                         </>
                       ) : (
                         <p className="text-gray-400">
-                          Foto actual — selecciona una nueva para reemplazarla
+                          Foto actual - selecciona una nueva para reemplazarla
                         </p>
                       )}
                     </div>
@@ -844,7 +1125,7 @@ export default function Libros() {
       )}
 
       {modalEstanterias && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-bold text-gray-800">
               Gestionar estanterías
@@ -1011,7 +1292,247 @@ export default function Libros() {
       )}
       <iframe ref={iframeRef} style={{ display: 'none' }} title="impresion" />
 
+      {modalImportar && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div
+            className={`bg-white rounded-2xl shadow-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 ${importPreview ? 'max-w-5xl' : 'max-w-lg'}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <Upload size={18} className="text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Importar libros desde CSV
+                </h2>
+                <p className="text-xs text-gray-400">
+                  Formato esperado: titulo, autor, editorial, volumen, idioma,
+                  genero, estanteria, categoria
+                </p>
+              </div>
+            </div>
+
+            {importPreview === null ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Solo compatible con archivos .csv con valores separados por{' '}
+                    <b>comas</b>. La columna de estantería del CSV se ignora —
+                    se asigna abajo.
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Archivo CSV *
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer border border-gray-300 hover:border-brand-500 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-brand-600 transition-colors">
+                    📁{' '}
+                    {importFile ? importFile.name : 'Seleccionar archivo .csv'}
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        setImportFile(e.target.files[0]);
+                        setImportError('');
+                      }}
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Estantería a asignar
+                  </label>
+                  <select
+                    value={importEstanteria}
+                    onChange={(e) => setImportEstanteria(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="">— Sin estantería —</option>
+                    {estanterias.map((e) => (
+                      <option key={e.id} value={e.nombre}>
+                        {e.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {importError && (
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border bg-red-50 border-red-200 text-red-600">
+                    <span className="shrink-0">✗</span>
+                    <span>{importError}</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalImportar(false)}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrevisualizarLibros}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg"
+                  >
+                    Previsualizar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-gray-800">
+                      {importPreview.length} libros
+                    </span>{' '}
+                    listos para importar
+                    {importEstanteria && (
+                      <>
+                        {' '}
+                        · estantería:{' '}
+                        <span className="font-medium">{importEstanteria}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                      <tr>
+                        <th className="px-3 py-2 text-left">#</th>
+                        <th className="px-3 py-2 text-left">Título</th>
+                        <th className="px-3 py-2 text-left">Autor</th>
+                        <th className="px-3 py-2 text-left">Editorial</th>
+                        <th className="px-3 py-2 text-left">Vol.</th>
+                        <th className="px-3 py-2 text-left">Idioma</th>
+                        <th className="px-3 py-2 text-left">Género</th>
+                        <th className="px-3 py-2 text-left">Estantería</th>
+                        <th className="px-3 py-2 text-left">Categoría</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {importPreview.map((l, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-gray-400 text-xs">
+                            {i + 1}
+                          </td>
+                          <td className="px-3 py-2 font-medium">{l.titulo}</td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.autor || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.editorial || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.volumen || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.idioma || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.genero || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {importEstanteria || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">
+                            {l.categoria || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {importError && (
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm border bg-red-50 border-red-200 text-red-600">
+                    <span className="shrink-0">✗</span>
+                    <span>{importError}</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportPreview(null);
+                      setImportError('');
+                    }}
+                    disabled={importLoading}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmarImportLibros}
+                    disabled={importLoading}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                  >
+                    {importLoading
+                      ? 'Importando...'
+                      : `Confirmar importación (${importPreview.length})`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-gray-800 font-medium text-center whitespace-pre-line">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3 justify-center">
+              {confirmModal.onConfirm ? (
+                <>
+                  <button
+                    onClick={() =>
+                      setConfirmModal({
+                        open: false,
+                        message: '',
+                        onConfirm: null,
+                      })
+                    }
+                    className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Eliminar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() =>
+                    setConfirmModal({
+                      open: false,
+                      message: '',
+                      onConfirm: null,
+                    })
+                  }
+                  className="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium"
+                >
+                  Aceptar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toast toast={toast} />
+      {imprimiendo && (
+        <EtiquetasImpresion
+          libros={libros.filter((l) => seleccionados.has(l.id)).slice(0, 32)}
+          onClose={() => setImprimiendo(false)}
+        />
+      )}
     </div>
   );
 }

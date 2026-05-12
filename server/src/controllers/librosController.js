@@ -31,6 +31,10 @@ exports.getAll = async (req, res) => {
       query += ' AND estanteria = ?';
       params.push(req.query.estanteria);
     }
+    if (req.query.etiquetado !== undefined && req.query.etiquetado !== '') {
+      query += ' AND etiquetado = ?';
+      params.push(parseInt(req.query.etiquetado));
+    }
     const validSort = ['titulo', 'autor', 'editorial'];
     const sortBy = validSort.includes(req.query.sortBy)
       ? req.query.sortBy
@@ -215,6 +219,90 @@ exports.remove = async (req, res) => {
     res.json({ message: 'Libro eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.marcarEtiquetado = async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ error: 'No hay libros seleccionados' });
+  const idsValidos = ids.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (!idsValidos.length)
+    return res.status(400).json({ error: 'IDs inválidos' });
+  await db.query('UPDATE libro SET etiquetado = 1 WHERE id IN (?)', [idsValidos]);
+  res.json({ actualizados: idsValidos.length });
+};
+
+exports.eliminarMultiple = async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ error: 'No hay libros seleccionados' });
+  try {
+    const fallos = [];
+    for (const id of ids) {
+      const [rows] = await db.query('SELECT titulo FROM libro WHERE id = ?', [id]);
+      const [activos] = await db.query(
+        'SELECT id FROM prestamo WHERE id_libro = ? AND devuelto = 0 LIMIT 1',
+        [id]
+      );
+      if (activos.length) fallos.push(rows[0]?.titulo || `ID ${id}`);
+    }
+    if (fallos.length)
+      return res.status(409).json({ fallos });
+
+    for (const id of ids) {
+      const [rows] = await db.query('SELECT nombre_foto FROM libro WHERE id = ?', [id]);
+      if (rows[0]?.nombre_foto) {
+        const fotoPath = path.join(__dirname, '../../uploads/fotos_portadas', rows[0].nombre_foto);
+        if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
+      }
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    await db.query(`DELETE FROM libro WHERE id IN (${placeholders})`, ids);
+    res.json({ eliminados: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.importar = async (req, res) => {
+  const { libros, estanteria } = req.body;
+  if (!Array.isArray(libros) || !libros.length)
+    return res.status(400).json({ error: 'No hay libros para importar' });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (const l of libros) {
+      const { titulo, autor, editorial, volumen, idioma, genero, categoria } = l;
+      if (!titulo) throw new Error('Hay filas sin título');
+      const [result] = await conn.query(
+        'INSERT INTO libro (titulo, autor, editorial, volumen, idioma, genero, categoria, estanteria, estado) VALUES (?,?,?,?,?,?,?,?,?)',
+        [
+          titulo,
+          autor || null,
+          editorial || null,
+          volumen || null,
+          idioma || null,
+          genero || null,
+          categoria || null,
+          estanteria || null,
+          'disponible',
+        ]
+      );
+      const newId = result.insertId;
+      await conn.query(
+        "UPDATE libro SET codigo = CONCAT('L_', ?) WHERE id = ?",
+        [newId, newId]
+      );
+    }
+    await conn.commit();
+    res.json({ importados: libros.length });
+  } catch (err) {
+    await conn.rollback();
+    res.status(400).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 };
 

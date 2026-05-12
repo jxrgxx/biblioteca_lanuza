@@ -7,6 +7,7 @@ router.get('/', auth, isPersonal, ctrl.getAll);
 router.get('/:id', auth, isPersonal, ctrl.getOne);
 router.post('/subida-de-curso', auth, isPersonal, ctrl.subidaDeCurso);
 router.post('/importar', auth, isPersonal, ctrl.importar);
+router.post('/eliminar-multiple', auth, isPersonal, ctrl.eliminarMultiple);
 router.patch('/:id/activo', auth, isPersonal, ctrl.toggleActivo);
 router.get('/:id/prestamos-count', auth, isPersonal, ctrl.prestamosCount);
 router.post('/', auth, isPersonal, ctrl.create);

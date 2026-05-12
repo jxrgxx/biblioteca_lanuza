@@ -69,6 +69,9 @@ export default function Prestamos() {
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT);
   const [editError, setEditError] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const lastClickedRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -311,25 +314,90 @@ export default function Prestamos() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este préstamo? Esta acción no se puede deshacer.'))
-      return;
-    try {
-      await api.delete(`/prestamos/${id}`);
-      showToast('Préstamo eliminado');
-      load();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar préstamo');
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar este préstamo? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.delete(`/prestamos/${id}`);
+          showToast('Préstamo eliminado');
+          load();
+        } catch (err) {
+          setConfirmModal({
+            open: true,
+            message: err.response?.data?.error || 'Error al eliminar préstamo',
+            onConfirm: null,
+          });
+        }
+      },
+    });
   };
 
-  const handleDevolver = async (id) => {
-    if (!confirm('¿Registrar devolución?')) return;
-    await api.put(`/prestamos/${id}/devolver`, {
-      fecha_devolucion_real: today,
+  const handleDevolver = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Registrar devolución?',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        await api.put(`/prestamos/${id}/devolver`, {
+          fecha_devolucion_real: today,
+        });
+        showToast('Devolución registrada');
+        load();
+      },
     });
-    showToast('Devolución registrada');
-    load();
+  };
+
+  const toggleSeleccion = (id, index, shiftKey) => {
+    const next = new Set(seleccionados);
+    if (shiftKey && lastClickedRef.current !== null) {
+      const start = Math.min(lastClickedRef.current, index);
+      const end = Math.max(lastClickedRef.current, index);
+      const target = !seleccionados.has(id);
+      pagina.slice(start, end + 1).forEach((item) => {
+        target ? next.add(item.id) : next.delete(item.id);
+      });
+    } else {
+      next.has(id) ? next.delete(id) : next.add(id);
+    }
+    lastClickedRef.current = index;
+    setSeleccionados(next);
+  };
+
+  const toggleTodos = () => {
+    const idsPagina = pagina.map((p) => p.id);
+    const todosSeleccionados = idsPagina.every((id) => seleccionados.has(id));
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (todosSeleccionados) idsPagina.forEach((id) => next.delete(id));
+      else idsPagina.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleEliminarMultiple = () => {
+    const ids = [...seleccionados];
+    setConfirmModal({
+      open: true,
+      message: `¿Eliminar ${ids.length} préstamo${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.post('/prestamos/eliminar-multiple', { ids });
+          setSeleccionados(new Set());
+          showToast(`${ids.length} préstamo${ids.length > 1 ? 's' : ''} eliminado${ids.length > 1 ? 's' : ''}`);
+          load();
+        } catch (err) {
+          setConfirmModal({
+            open: true,
+            message: err.response?.data?.error || 'Error al eliminar',
+            onConfirm: null,
+          });
+        }
+      },
+    });
   };
 
   // Modal préstamo múltiple (lote)
@@ -697,10 +765,30 @@ export default function Prestamos() {
         </p>
       </div>
 
+      {seleccionados.size > 0 && (
+        <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-4 py-2.5 mb-3">
+          <span className="text-sm text-brand-700 font-medium">{seleccionados.size} préstamo{seleccionados.size > 1 ? 's' : ''} seleccionado{seleccionados.size > 1 ? 's' : ''}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setSeleccionados(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Deseleccionar todo</button>
+            <button onClick={handleEliminarMultiple} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg">
+              <Trash2 size={12} /> Eliminar seleccionados
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={pagina.length > 0 && pagina.every((p) => seleccionados.has(p.id))}
+                  onChange={toggleTodos}
+                  className="cursor-pointer"
+                />
+              </th>
               <Th col="codigo">Código</Th>
               <Th col="codigo_lote">Lote</Th>
               <Th col="usuario_apellidos">Usuario</Th>
@@ -714,11 +802,20 @@ export default function Prestamos() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {pagina.map((p) => (
+            {pagina.map((p, idx) => (
               <tr
                 key={p.id}
-                className={`hover:bg-gray-50 ${vencido(p) ? 'bg-red-50' : ''}`}
+                className={`hover:bg-gray-50 ${seleccionados.has(p.id) ? 'bg-brand-50' : vencido(p) ? 'bg-red-50' : ''}`}
               >
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.has(p.id)}
+                    onChange={() => {}}
+                    onClick={(e) => toggleSeleccion(p.id, idx, e.shiftKey)}
+                    className="cursor-pointer"
+                  />
+                </td>
                 <td className="px-4 py-3 font-mono text-xs tracking-widest text-gray-500">
                   {p.codigo || '—'}
                 </td>
@@ -824,7 +921,7 @@ export default function Prestamos() {
 
       {/* Modal nuevo préstamo */}
       {modal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">Nuevo préstamo</h2>
@@ -966,7 +1063,7 @@ export default function Prestamos() {
 
       {/* Modal editar */}
       {editModal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-bold">Editar préstamo</h2>
@@ -1042,7 +1139,7 @@ export default function Prestamos() {
       )}
       {/* Modal préstamo múltiple */}
       {modalLote && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             {loteResultado ? (
               <>
@@ -1317,6 +1414,39 @@ export default function Prestamos() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-gray-800 font-medium text-center whitespace-pre-line">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-center">
+              {confirmModal.onConfirm ? (
+                <>
+                  <button
+                    onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                    className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Confirmar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                  className="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium"
+                >
+                  Aceptar
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

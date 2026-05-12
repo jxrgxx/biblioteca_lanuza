@@ -308,6 +308,32 @@ exports.remove = async (req, res) => {
   }
 };
 
+exports.eliminarMultiple = async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ error: 'No hay préstamos seleccionados' });
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (const id of ids) {
+      const [rows] = await conn.query('SELECT * FROM prestamo WHERE id = ?', [id]);
+      if (!rows.length) continue;
+      const p = rows[0];
+      await cancelarRecordatorio(conn, { id_prestamo: parseInt(id) });
+      await conn.query('DELETE FROM prestamo WHERE id = ?', [id]);
+      if (!p.devuelto)
+        await conn.query("UPDATE libro SET estado='disponible' WHERE id=?", [p.id_libro]);
+    }
+    await conn.commit();
+    res.json({ eliminados: ids.length });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
 exports.createLote = async (req, res) => {
   const conn = await db.getConnection();
   try {

@@ -172,6 +172,7 @@ exports.remove = async (req, res) => {
       'SELECT nombre_foto FROM actividad_foto WHERE id_actividad = ?',
       [req.params.id]
     );
+    await db.query('DELETE FROM actividad WHERE id = ?', [req.params.id]);
     fotos.forEach((f) => {
       const fotoPath = path.join(
         __dirname,
@@ -180,7 +181,6 @@ exports.remove = async (req, res) => {
       );
       if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
     });
-    await db.query('DELETE FROM actividad WHERE id = ?', [req.params.id]);
     res.json({ message: 'Actividad eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -223,10 +223,10 @@ exports.deleteFoto = async (req, res) => {
       '../../uploads/fotos_actividades',
       rows[0].nombre_foto
     );
-    if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
     await db.query('DELETE FROM actividad_foto WHERE id = ?', [
       req.params.fotoId,
     ]);
+    if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
     res.json({ message: 'Foto eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });

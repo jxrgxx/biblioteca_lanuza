@@ -54,6 +54,7 @@ export default function Registro() {
   // Buscador / filtros tabla
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
   const [filtroCurso, setFiltroCurso] = useState('');
   const debounceRef = useRef(null);
   const [page, setPage] = useState(1);
@@ -196,10 +197,16 @@ export default function Registro() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar esta entrada?')) return;
-    await api.delete(`/registro/${id}`);
-    load();
+  const handleDelete = (id) => {
+    setConfirmModal({
+      open: true,
+      message: '¿Eliminar esta entrada?',
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        await api.delete(`/registro/${id}`);
+        load();
+      },
+    });
   };
 
   const handleSearchInput = (val) => {
@@ -627,6 +634,39 @@ export default function Registro() {
           )}
         </div>
       </div>
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-gray-800 font-medium text-center">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-center">
+              {confirmModal.onConfirm ? (
+                <>
+                  <button
+                    onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                    className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Eliminar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                  className="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium"
+                >
+                  Aceptar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

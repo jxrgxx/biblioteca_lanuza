@@ -77,8 +77,11 @@ export default function Usuarios() {
 
   const [modalEliminar, setModalEliminar] = useState(null); // { id, nombre, apellidos, prestamos }
   const [eliminandoLoading, setEliminandoLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
 
   const [mostrarInactivos, setMostrarInactivos] = useState(false);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const lastClickedRef = useRef(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filtroRol, setFiltroRol] = useState('');
@@ -179,7 +182,7 @@ export default function Usuarios() {
       load();
     } catch (err) {
       setModalEliminar(null);
-      alert(err.response?.data?.error || 'Error al eliminar el usuario');
+      showToast(err.response?.data?.error || 'Error al eliminar el usuario', 'error');
     } finally {
       setEliminandoLoading(false);
     }
@@ -198,8 +201,9 @@ export default function Usuarios() {
       );
       load();
     } catch (err) {
-      alert(
-        err.response?.data?.error || 'Error al ejecutar la subida de curso'
+      showToast(
+        err.response?.data?.error || 'Error al ejecutar la subida de curso',
+        'error'
       );
     } finally {
       setSubidaLoading(false);
@@ -374,6 +378,59 @@ export default function Usuarios() {
     }
   };
 
+  const toggleSeleccion = (id, index, shiftKey) => {
+    const next = new Set(seleccionados);
+    if (shiftKey && lastClickedRef.current !== null) {
+      const start = Math.min(lastClickedRef.current, index);
+      const end = Math.max(lastClickedRef.current, index);
+      const target = !seleccionados.has(id);
+      pagina.slice(start, end + 1).forEach((item) => {
+        target ? next.add(item.id) : next.delete(item.id);
+      });
+    } else {
+      next.has(id) ? next.delete(id) : next.add(id);
+    }
+    lastClickedRef.current = index;
+    setSeleccionados(next);
+  };
+
+  const toggleTodos = () => {
+    const idsPagina = pagina.map((u) => u.id);
+    const todosSeleccionados = idsPagina.every((id) => seleccionados.has(id));
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (todosSeleccionados) idsPagina.forEach((id) => next.delete(id));
+      else idsPagina.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleEliminarMultiple = () => {
+    const ids = [...seleccionados];
+    setConfirmModal({
+      open: true,
+      message: `¿Eliminar ${ids.length} usuario${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        setConfirmModal({ open: false, message: '', onConfirm: null });
+        try {
+          await api.post('/usuarios/eliminar-multiple', { ids });
+          setSeleccionados(new Set());
+          showToast(`${ids.length} usuario${ids.length > 1 ? 's' : ''} eliminado${ids.length > 1 ? 's' : ''}`);
+          load();
+        } catch (err) {
+          const fallos = err.response?.data?.fallos;
+          setConfirmModal({
+            open: true,
+            message: fallos
+              ? `No se pueden eliminar los siguientes usuarios porque tienen préstamos activos:\n${fallos.join(', ')}`
+              : err.response?.data?.error || 'Error al eliminar',
+            onConfirm: null,
+          });
+        }
+      },
+    });
+  };
+
   const hayFiltros = searchInput || filtroRol || filtroUbicacion;
   const limpiarFiltros = () => {
     setSearchInput('');
@@ -541,10 +598,30 @@ export default function Usuarios() {
         </div>
       </div>
 
+      {seleccionados.size > 0 && (
+        <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-4 py-2.5 mb-3">
+          <span className="text-sm text-brand-700 font-medium">{seleccionados.size} usuario{seleccionados.size > 1 ? 's' : ''} seleccionado{seleccionados.size > 1 ? 's' : ''}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setSeleccionados(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Deseleccionar todo</button>
+            <button onClick={handleEliminarMultiple} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg">
+              <Trash2 size={12} /> Eliminar seleccionados
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
             <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={pagina.length > 0 && pagina.every((u) => seleccionados.has(u.id))}
+                  onChange={toggleTodos}
+                  className="cursor-pointer"
+                />
+              </th>
               <Th col="codigo">Código</Th>
               <Th col="nombre">Nombre</Th>
               <Th col="apellidos">Apellidos</Th>
@@ -558,11 +635,20 @@ export default function Usuarios() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {pagina.map((u) => (
+            {pagina.map((u, idx) => (
               <tr
                 key={u.id}
-                className={`hover:bg-gray-50 ${u.activo === 0 ? 'opacity-50' : ''}`}
+                className={`hover:bg-gray-50 ${seleccionados.has(u.id) ? 'bg-brand-50' : u.activo === 0 ? 'opacity-50' : ''}`}
               >
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.has(u.id)}
+                    onChange={() => {}}
+                    onClick={(e) => toggleSeleccion(u.id, idx, e.shiftKey)}
+                    className="cursor-pointer"
+                  />
+                </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
                   {u.codigo || '—'}
                 </td>
@@ -665,7 +751,7 @@ export default function Usuarios() {
       )}
 
       {modal && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="bg-brand-700 text-white rounded-t-2xl -mx-6 -mt-6 px-6 py-4 mb-5">
               <h2 className="text-lg font-medium">
@@ -788,7 +874,7 @@ export default function Usuarios() {
       )}
 
       {modalCodigo && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-bold text-gray-800">
               Código de registro
@@ -831,7 +917,7 @@ export default function Usuarios() {
 
       {/* Modal eliminar usuario */}
       {modalEliminar && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -889,7 +975,7 @@ export default function Usuarios() {
 
       {/* Modal subida de curso */}
       {modalSubida && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -948,7 +1034,7 @@ export default function Usuarios() {
 
       {/* Modal importar CSV */}
       {modalImportar && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
@@ -1153,6 +1239,39 @@ export default function Usuarios() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-gray-800 font-medium text-center whitespace-pre-line">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-center">
+              {confirmModal.onConfirm ? (
+                <>
+                  <button
+                    onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                    className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="px-5 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                  >
+                    Eliminar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}
+                  className="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium"
+                >
+                  Aceptar
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

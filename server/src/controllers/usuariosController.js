@@ -79,6 +79,18 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { nombre, apellidos, email, password, rol, ubicacion } = req.body;
+
+    if (!email.toLowerCase().endsWith('@juandelanuza.org'))
+      return res.status(400).json({ error: 'El email debe ser del dominio @juandelanuza.org' });
+
+    if (rol === 'biblioteca') {
+      const [current] = await db.query('SELECT rol FROM usuario WHERE id = ?', [req.params.id]);
+      if (!current.length)
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      if (!['personal', 'profesorado'].includes(current[0].rol))
+        return res.status(400).json({ error: 'Solo se puede asignar el rol biblioteca a personal o profesorado' });
+    }
+
     if (password) {
       const hash = await bcrypt.hash(password, 10);
       await db.query(
@@ -99,6 +111,8 @@ exports.update = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(rows[0]);
   } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY')
+      return res.status(409).json({ error: 'Email ya registrado' });
     res.status(500).json({ error: err.message });
   }
 };
@@ -120,6 +134,31 @@ exports.remove = async (req, res) => {
       });
     await db.query('DELETE FROM usuario WHERE id = ?', [req.params.id]);
     res.json({ message: 'Usuario eliminado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.eliminarMultiple = async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ error: 'No hay usuarios seleccionados' });
+  try {
+    const fallos = [];
+    for (const id of ids) {
+      const [rows] = await db.query('SELECT nombre, apellidos FROM usuario WHERE id = ?', [id]);
+      const [activos] = await db.query(
+        'SELECT id FROM prestamo WHERE id_usuario = ? AND devuelto = 0 LIMIT 1',
+        [id]
+      );
+      if (activos.length)
+        fallos.push(`${rows[0]?.nombre} ${rows[0]?.apellidos}`.trim() || `ID ${id}`);
+    }
+    if (fallos.length)
+      return res.status(409).json({ fallos });
+    const placeholders = ids.map(() => '?').join(',');
+    await db.query(`DELETE FROM usuario WHERE id IN (${placeholders})`, ids);
+    res.json({ eliminados: ids.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -161,18 +200,36 @@ exports.importar = async (req, res) => {
   if (!password)
     return res.status(400).json({ error: 'La contraseña es obligatoria' });
 
+  // Validar formato antes de tocar la BD
+  for (const u of usuarios) {
+    const { nombre, apellidos, email } = u;
+    if (!nombre || !apellidos || !email)
+      return res.status(400).json({
+        error: `Fila incompleta: "${nombre || ''}" "${apellidos || ''}" "${email || ''}"`,
+      });
+    if (!email.toLowerCase().endsWith('@juandelanuza.org'))
+      return res.status(400).json({ error: `Email inválido: ${email}` });
+  }
+
+  // Comprobar duplicados antes de insertar nada
+  const emails = usuarios.map((u) => u.email);
+  const [existentes] = await db.query(
+    'SELECT email FROM usuario WHERE email IN (?)',
+    [emails]
+  );
+  if (existentes.length) {
+    const lista = existentes.map((r) => r.email).join('\n');
+    return res.status(409).json({
+      error: `Los siguientes emails ya están registrados:\n${lista}`,
+    });
+  }
+
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
     const hash = await bcrypt.hash(password, 10);
     for (const u of usuarios) {
       const { nombre, apellidos, email } = u;
-      if (!nombre || !apellidos || !email)
-        throw new Error(
-          `Fila incompleta: "${nombre || ''}" "${apellidos || ''}" "${email || ''}"`
-        );
-      if (!email.toLowerCase().endsWith('@juandelanuza.org'))
-        throw new Error(`Email inválido: ${email}`);
       const [result] = await conn.query(
         'INSERT INTO usuario (nombre, apellidos, email, password, rol, ubicacion, fecha_alta) VALUES (?,?,?,?,?,?,CURDATE())',
         [nombre, apellidos, email, hash, rol, ubicacion || null]
@@ -187,12 +244,7 @@ exports.importar = async (req, res) => {
     res.json({ importados: usuarios.length });
   } catch (err) {
     await conn.rollback();
-    if (err.code === 'ER_DUP_ENTRY')
-      return res.status(409).json({
-        error:
-          'Uno o más emails ya están registrados — no se ha importado ningún usuario',
-      });
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   } finally {
     conn.release();
   }
